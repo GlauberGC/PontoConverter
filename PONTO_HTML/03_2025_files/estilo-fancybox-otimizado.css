@@ -1,0 +1,20 @@
+/* Alteracoes no z-index dos elemento do modal de imagem para evitar sobreposicao dos modais do wicket */
+#fancybox-loading {
+    z-index: 20008; !important;
+}
+
+#fancybox-overlay {
+    z-index: 20005; !important;
+}
+
+#fancybox-wrap, #fancybox-hide-sel-frame, .fancybox-bg {
+    z-index: 20005; !important;
+}
+
+#fancybox-close {
+    z-index: 20007; !important;
+}
+
+#fancybox-left, #fancybox-right, #fancybox-title, #fancybox-left-ico, #fancybox-right-ico, #fancybox-content {
+    z-index: 20006; !important;
+}

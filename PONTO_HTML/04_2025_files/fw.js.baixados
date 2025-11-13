@@ -1,0 +1,35 @@
+function tema(link,tema){
+var todos = link.parentNode.parentNode.getElementsByTagName('a');
+for (var i=0;i<todos.length;i++){todos[i].className='';}
+link.className='at';
+document.getElementById('geral').className=tema;
+}
+function contrai(){var corpo=document.getElementById("corpo");if(corpo.className==""){corpo.className="sem-menu";}else{corpo.className="";}}
+
+
+function abrirRelatorioFolhaPonto() {
+  var wid = Math.floor(Math.random() * (1000 - 100 + 1)) + 100;
+  var targeturl = 'folha-ponto?wicket:pageMapName=' + wid;
+  if(!document.location.href.includes('pages/')) {
+    targeturl = 'pages/folha-ponto?wicket:pageMapName=' + wid;
+  }
+  window.open(targeturl);
+}
+
+function abrirRelatorioBancoHoras() {
+  var wid = Math.floor(Math.random() * (1000 - 100 + 1)) + 100;
+  var targeturl = 'relatorio/banco-horas?wicket:pageMapName=' + wid;
+  if(!document.location.href.includes('pages/')) {
+    targeturl = 'pages/relatorio/banco-horas?wicket:pageMapName=' + wid;
+  }
+  window.open(targeturl);
+}
+
+function abrirRelatorioHorasExtras() {
+  var wid = Math.floor(Math.random() * (1000 - 100 + 1)) + 100;
+  var targeturl = 'relatorio/banco-horas?wicket:pageMapName=' + wid;
+  if(!document.location.href.includes('pages/')) {
+    targeturl = 'pages/relatorio/banco-horas?wicket:pageMapName=' + wid;
+  }
+  window.open(targeturl);
+}

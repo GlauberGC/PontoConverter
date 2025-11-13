@@ -1,0 +1,1747 @@
+/*
+ * Black Friday floating card injected across eligible pages.
+ * To adjust copy/behaviour, define window.blackFridayModalConfig before this script loads
+ * or call window.blackFridayModal.update({...}) later. See DEFAULT_BASE_CONFIG and PATH_RULES.
+ */
+(function () {
+  var CARD_ID = 'blackfriday-floating-card';
+  var STYLE_ID = CARD_ID + '-style';
+  var CONFIG_KEY = 'blackFridayModalConfig';
+  var API_KEY = 'blackFridayModal';
+  var CLOSE_STORAGE_KEY = 'modalClosedIntegracaoWpp';
+  var ADMISSION_CLOSE_STORAGE_KEY = 'modalClosedAdmissao';
+  var GED_CLOSE_STORAGE_KEY = 'modalClosedGed';
+  var VACATION_CLOSE_STORAGE_KEY = 'modalClosedFerias';
+  var CLOSE_COOLDOWN_MS = 2 * 60 * 60 * 1000;
+  var BASE_TANGERINO_PATH = 'https://app.tangerino.com.br/';
+  var BASE_API_PATH = 'https://employer.tangerino.com.br/api/employer/';
+  var BASE_ANALYTICS_API_PATH = 'https://apis.tangerino.com.br/analytics-api/api/';
+  var OFFER_STATUS_ENDPOINT = 'bf-game/activated-offer/';
+  var USER_MODULES_ENDPOINT = 'v1/user/modules-enable';
+  var OFFER_COOKIE_KEY = '_new_tangerino_frontend_employer_id';
+  var offerActivationAllowed = null;
+  var offerActivationRequestInFlight = false;
+
+  function joinUrl(base, path) {
+    var safeBase = String(base || '');
+    var safePath = String(path || '');
+    if (!safeBase) {
+      safeBase = '/';
+    }
+    safeBase = safeBase.replace(/\/+$/, '/');
+    if (safeBase.charAt(safeBase.length - 1) !== '/') {
+      safeBase += '/';
+    }
+    safePath = safePath.replace(/^\/+/, '');
+    return safeBase + safePath;
+  }
+
+  function buildMarketplaceUrl(moduleHash) {
+    if (!moduleHash) {
+      return joinUrl(BASE_TANGERINO_PATH, 'Tangerino/pages/marketplace');
+    }
+    return joinUrl(
+      BASE_TANGERINO_PATH,
+      'Tangerino/pages/marketplace?module=' + moduleHash
+    );
+  }
+
+  var MARKETPLACE_PATH = buildMarketplaceUrl('eb4a6f8b5851685a5ca6751f27ca77da');
+  var ADMISSION_MARKETPLACE_PATH = buildMarketplaceUrl('6512bd43d9caa6e02c990b0a82652dca');
+  var VACATION_MARKETPLACE_PATH = buildMarketplaceUrl('c4ca4238a0b923820dcc509a6f75849b');
+  var GED_MARKETPLACE_PATH = buildMarketplaceUrl('efaec3b07d764cb1955f4d38bdc18ac0');
+  var MODULES_API_URL = joinUrl(BASE_ANALYTICS_API_PATH, USER_MODULES_ENDPOINT);
+
+  function buildOfferActivationUrl(employerId) {
+    return joinUrl(
+      BASE_API_PATH,
+      OFFER_STATUS_ENDPOINT + encodeURIComponent(String(employerId || ''))
+    );
+  }
+  /**
+   * Debug helper: set `window.blackFridayDebugModal = '<alias>'` before this script loads
+   * (or run it and call `window.blackFridayModal.show()` afterwards) to force a specific
+   * popup to render. Supported aliases are declared in DEBUG_ALIAS_MAP below.
+   * Example for GED:
+   *   <script>window.blackFridayDebugModal = 'ged';</script>
+   *   <script src="/web/js/blackfriday.js"></script>
+   * Clear the override by deleting the property or assigning an empty value.
+   */
+  var DEBUG_GLOBAL_KEY = 'blackFridayDebugModal';
+  /**
+   * Defina `window.blackFridaySkipModuleCheck = true` antes de carregar o script
+   * para ignorar a validação de módulos habilitados (útil em testes locais).
+   */
+  var MODULE_CHECK_DEBUG_KEY = 'blackFridaySkipModuleCheck';
+  if (typeof window !== 'undefined' && window[MODULE_CHECK_DEBUG_KEY] === undefined) {
+    window[MODULE_CHECK_DEBUG_KEY] = true;
+  }
+  var DEFAULT_CTA_TARGET = '_blank';
+  var DEFAULT_CTA_REL = 'noopener noreferrer';
+  var DEFAULT_TAG = 'plg_bf_2025';
+  var MIN_BOTTOM_OFFSET = 60;
+  var CHAT_EXTRA_GAP = 16;
+  var CHAT_ADJUST_INTERVAL = 2500;
+  var COOLDOWN_WATCH_INTERVAL = 1000;
+  var cooldownWatchers = Object.create(null);
+  var GAME_FLAG_KEYS = [
+    'bfGamePlayed',
+    'bfGameCompleted',
+    'bfGameFinished',
+    'bfIntegrationGameDone',
+    'bfIntegrationGameCompleted',
+    'bf_wpp_game_completed',
+    'blackFridayGamePlayed',
+    'blackFridayGameCompleted'
+  ];
+  var CHAT_SELECTORS = [
+    '#web-messenger-container.widget-open',
+    '#web-messenger-container',
+    '#sk-holder',
+    '.help-float',
+    '.solides-chat-launcher',
+    '.smooch-button',
+    '.smooch-launcher-card',
+    '.kommunicate-widget-bubble',
+    '.kommunicate-widget-open'
+  ];
+  var DEFAULT_BASE_CONFIG = Object.freeze({
+    title: 'Aqui vai um titulo',
+    description: 'Aqui vamos ter um descritivo para compor a mensagem apos colocar o titulo, descreva aqui o objetivo.',
+    ctaText: 'Aproveitar o desconto',
+    ctaHref: MARKETPLACE_PATH,
+    ctaTarget: DEFAULT_CTA_TARGET,
+    ctaRel: DEFAULT_CTA_REL,
+    hideOnCta: true,
+    requireGamePlayed: true,
+    modulesRequired: ['GED', 'ADMISSAO'],
+    modulesRelation: 'any',
+    closeStorageKey: CLOSE_STORAGE_KEY,
+    cooldownMs: CLOSE_COOLDOWN_MS,
+    sId: DEFAULT_TAG,
+    sCategory: DEFAULT_TAG
+  });
+  var USER_SESSION_TOKEN_COOKIE = '_user_session_basic_token';
+  var USER_BEARER_COOKIE = '_new_tangerino_frontend_bearer';
+  var USER_ID_COOKIE = '_new_tangerino_frontend_user_id';
+  var USER_TYPE_COOKIE = '_new_tangerino_frontend_user_type';
+  var USER_MODULES_RETRY_DELAY_MS = 60 * 1000;
+  var userModulesAllowed = null;
+  var userModulesRequestInFlight = false;
+  var userModulesFetchFailed = false;
+  var userModulesNextRetryAt = 0;
+  var PATH_RULES = {
+    geddocuments: {
+      title: '80% OFF pra fazer Admissões mais eficientes',
+      description: 'Automatize o processo de admissão e evite retrabalho!',
+      ctaText: 'Quero aproveitar',
+      ctaHref: ADMISSION_MARKETPLACE_PATH,
+      closeStorageKey: ADMISSION_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      targetModule: 'ADMISSION',
+      sId: 'BFDP1-GR94'
+    },
+    gedsignatures: {
+      title: '80% OFF pra fazer Admissões mais eficientes',
+      description: 'Automatize o processo de admissão e evite retrabalho!',
+      ctaText: 'Quero aproveitar',
+      ctaHref: ADMISSION_MARKETPLACE_PATH,
+      closeStorageKey: ADMISSION_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      targetModule: 'ADMISSION',
+      sId: 'BFDP2-GR94'
+    },
+    'list-fechamento-banco-horas': {
+      title: '80% OFF para vencer o jogo das férias',
+      description: 'Planeje e aprove férias sem conflito de datas. Com automação, você controla o placar da produtividade.',
+      ctaText: 'Quero aproveitar',
+      ctaHref: VACATION_MARKETPLACE_PATH,
+      closeStorageKey: VACATION_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      targetModule: 'VACATION',
+      sId: 'BFDP3-GR94'
+    },
+    'edit-data-fechamento-ponto': {
+      title: '80% OFF para vencer o jogo das férias',
+      description: 'Planeje e aprove férias sem conflito de datas. Com automação, você controla o placar da produtividade.',
+      ctaText: 'Quero aproveitar',
+      ctaHref: VACATION_MARKETPLACE_PATH,
+      closeStorageKey: VACATION_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      targetModule: 'VACATION',
+      sId: 'BFDP4-GR94'
+    },
+    'ajuste-banco-horas': {
+      title: '80% OFF para vencer o jogo das férias',
+      description: 'Planeje e aprove férias sem conflito de datas. Com automação, você controla o placar da produtividade.',
+      ctaText: 'Quero aproveitar',
+      ctaHref: VACATION_MARKETPLACE_PATH,
+      closeStorageKey: VACATION_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      targetModule: 'VACATION',
+      sId: 'BFDP5-GR94'
+    },
+    timeoffwork: {
+      title: '80% OFF para vencer o jogo das férias',
+      description: 'Planeje e aprove férias sem conflito de datas. Com automação, você controla o placar da produtividade.',
+      ctaText: 'Quero aproveitar',
+      ctaHref: VACATION_MARKETPLACE_PATH,
+      closeStorageKey: VACATION_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      targetModule: 'VACATION',
+      sId: 'BFDP6-GR94'
+    },
+    'apropriacao-horas': {
+      title: '80% OFF para vencer o jogo das férias',
+      description: 'Planeje e aprove férias sem conflito de datas. Com automação, você controla o placar da produtividade.',
+      ctaText: 'Quero aproveitar',
+      ctaHref: VACATION_MARKETPLACE_PATH,
+      closeStorageKey: VACATION_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      targetModule: 'VACATION',
+      sId: 'BFDP7-GR94'
+    },
+    'relatorio-banco-horas': {
+      title: '80% OFF para vencer o jogo das férias',
+      description: 'Planeje e aprove férias sem conflito de datas. Com automação, você controla o placar da produtividade.',
+      ctaText: 'Quero aproveitar',
+      ctaHref: VACATION_MARKETPLACE_PATH,
+      closeStorageKey: VACATION_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      targetModule: 'VACATION',
+      sId: 'BFDP8-GR94'
+    },
+    vacationdashboard: {
+      title: '80% OFF pra deixar o jogo organizado',
+      description: 'Chega de gavetas digitais. Centralize tudo, garanta conformidade e mantenha o DP em campo com segurança.',
+      ctaText: 'Quero aproveitar',
+      ctaHref: GED_MARKETPLACE_PATH,
+      closeStorageKey: GED_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      requireGamePlayed: false,
+      targetModule: 'GED',
+      sId: 'BFDP9-GR94'
+    },
+    colaboradores: {
+      title: '80% OFF pra deixar o jogo organizado',
+      description: 'Chega de gavetas digitais. Centralize tudo, garanta conformidade e mantenha o DP em campo com segurança.',
+      ctaText: 'Quero aproveitar',
+      ctaHref: GED_MARKETPLACE_PATH,
+      closeStorageKey: GED_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      requireGamePlayed: false,
+      targetModule: 'GED',
+      sId: 'BFDP10-GR94'
+    },
+    'list-exportar-eventos-folha-pagamento': {
+      title: '80% OFF pra deixar o jogo organizado',
+      description: 'Chega de gavetas digitais. Centralize tudo, garanta conformidade e mantenha o DP em campo com segurança.',
+      ctaText: 'Quero aproveitar',
+      ctaHref: GED_MARKETPLACE_PATH,
+      closeStorageKey: GED_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      requireGamePlayed: false,
+      targetModule: 'GED',
+      sId: 'BFDP11-GR94'
+    },
+    'folha-ponto': {
+      title: '80% OFF pra deixar o jogo organizado',
+      description: 'Chega de gavetas digitais. Centralize tudo, garanta conformidade e mantenha o DP em campo com segurança.',
+      ctaText: 'Quero aproveitar',
+      ctaHref: GED_MARKETPLACE_PATH,
+      closeStorageKey: GED_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      requireGamePlayed: false,
+      targetModule: 'GED',
+      sId: 'BFDP12-GR94'
+    },
+    'list-relatorio-falta': {
+      title: '80% OFF pra deixar o jogo organizado',
+      description: 'Chega de gavetas digitais. Centralize tudo, garanta conformidade e mantenha o DP em campo com segurança.',
+      ctaText: 'Quero aproveitar',
+      ctaHref: GED_MARKETPLACE_PATH,
+      closeStorageKey: GED_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      requireGamePlayed: false,
+      targetModule: 'GED',
+      sId: 'BFDP13-GR94'
+    },
+    vacationafastamentopage: {
+      title: '80% OFF pra deixar o jogo organizado',
+      description: 'Chega de gavetas digitais. Centralize tudo, garanta conformidade e mantenha o DP em campo com segurança.',
+      ctaText: 'Quero aproveitar',
+      ctaHref: GED_MARKETPLACE_PATH,
+      closeStorageKey: GED_CLOSE_STORAGE_KEY,
+      modulesRequired: [],
+      requireGamePlayed: false,
+      targetModule: 'GED',
+      sId: 'BFDP14-GR94'
+    }
+  };
+  var DEBUG_ALIAS_MAP = Object.freeze({
+    admissao: 'geddocuments',
+    ged: 'colaboradores',
+    ferias: 'ajuste-banco-horas',
+    vacation: 'vacationdashboard',
+    afastamento: 'vacationafastamentopage'
+  });
+  /**
+   * Local debug helper:
+   * 1. Antes de carregar este arquivo (ou pelo console), defina `window.blackFridayDebugModal = '<alias>'`.
+   * 2. Carregue a página normalmente. Se o modal não abrir, chame `window.blackFridayModal.show()` manualmente.
+   * 3. Limpe o teste zerando a variável (`delete window.blackFridayDebugModal`).
+   *
+   * Aliases suportados:
+   *   - 'admissao'   -> usa PATH_RULES['geddocuments']
+   *   - 'ged'        -> usa PATH_RULES['colaboradores']
+   *   - 'ferias'     -> usa PATH_RULES['ajuste-banco-horas']
+   *   - 'vacation'   -> usa PATH_RULES['vacationdashboard']
+   *   - 'afastamento'-> usa PATH_RULES['vacationafastamentopage']
+   * Também é possível informar diretamente qualquer chave de PATH_RULES (ex.: 'colaboradores').
+   * Dica: defina `window.blackFridaySkipModuleCheck = true` para ignorar a validação de módulos habilitados.
+   */
+  var DEBUG_AVAILABLE_RULES = Object.freeze(Object.keys(PATH_RULES));
+  var DEBUG_HELPER = Object.freeze({
+    key: DEBUG_GLOBAL_KEY,
+    aliases: DEBUG_ALIAS_MAP,
+    availableRules: DEBUG_AVAILABLE_RULES,
+    skipModuleCheckKey: MODULE_CHECK_DEBUG_KEY
+  });
+
+  if (typeof window !== 'undefined') {
+//    if (!window[DEBUG_GLOBAL_KEY]) {
+//      window[DEBUG_GLOBAL_KEY] = 'admissao';
+//    }
+    window.blackFridayModalDebugHelper = DEBUG_HELPER;
+  }
+
+  function normalizeDebugKey(value) {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    var stringValue = String(value).trim().toLowerCase();
+    if (!stringValue) {
+      return '';
+    }
+    return stringValue
+      .replace(/[^a-z0-9/_-]+/g, '-')
+      .replace(/\/+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function resolveDebugPageKey(rawValue) {
+    var normalized = normalizeDebugKey(rawValue);
+    if (!normalized) {
+      return null;
+    }
+    if (DEBUG_ALIAS_MAP[normalized]) {
+      normalized = DEBUG_ALIAS_MAP[normalized];
+    }
+    if (PATH_RULES[normalized]) {
+      return normalized;
+    }
+    return null;
+  }
+
+  function getDebugPageKey() {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    var rawValue = window[DEBUG_GLOBAL_KEY];
+    if (rawValue === null || rawValue === undefined || rawValue === '') {
+      return null;
+    }
+    return resolveDebugPageKey(rawValue);
+  }
+
+  var baseConfig = null;
+  var overrideConfig = null;
+  var activeConfig = null;
+  var elementsRef = null;
+  var chatAdjustTimer = null;
+  var chatResizeHandlerBound = false;
+  var interactionsBound = false;
+  var rerenderTimeoutId = null;
+  var modulesCache = null;
+
+  function mergeConfigs() {
+    var result = {};
+    for (var i = 0; i < arguments.length; i += 1) {
+      var source = arguments[i];
+      if (!source || typeof source !== 'object') {
+        continue;
+      }
+      for (var key in source) {
+        if (Object.prototype.hasOwnProperty.call(source, key) && source[key] !== undefined) {
+          result[key] = source[key];
+        }
+      }
+    }
+    return result;
+  }
+
+  function cloneConfig(config) {
+    if (!config || typeof config !== 'object') {
+      return null;
+    }
+    return mergeConfigs({}, config);
+  }
+
+  function updateOverrides(partial) {
+    var current = cloneConfig(getOverrides()) || {};
+    var next = mergeConfigs(current, partial || {});
+    overrideConfig = next;
+    window[CONFIG_KEY] = cloneConfig(next);
+    return overrideConfig;
+  }
+
+  function clearOverrides() {
+    overrideConfig = null;
+    try {
+      delete window[CONFIG_KEY];
+    } catch (error) {
+      window[CONFIG_KEY] = undefined;
+    }
+  }
+
+  function getOverrides() {
+    if (overrideConfig) {
+      return overrideConfig;
+    }
+    var config = window[CONFIG_KEY];
+    if (config && typeof config === 'object') {
+      overrideConfig = cloneConfig(config);
+      return overrideConfig;
+    }
+    return null;
+  }
+
+  function isModuleCheckDisabled() {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    try {
+      return window[MODULE_CHECK_DEBUG_KEY] === true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function normalizeString(value) {
+    if (typeof value !== 'string') {
+      return '';
+    }
+    return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+  }
+
+  function safeStorageGet(storage, key) {
+    if (!storage) {
+      return null;
+    }
+    try {
+      return storage.getItem(key);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function safeStorageSet(storage, key, value) {
+    if (!storage) {
+      return;
+    }
+    try {
+      storage.setItem(key, value);
+    } catch (error) {
+      // Ignore quota/security errors.
+    }
+  }
+
+  function safeStorageRemove(storage, key) {
+    if (!storage) {
+      return;
+    }
+    try {
+      storage.removeItem(key);
+    } catch (error) {
+      // Ignore errors.
+    }
+  }
+
+  function parseJson(value) {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    try {
+      return JSON.parse(value);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function getCookieValue(name) {
+    if (typeof document === 'undefined' || !name) {
+      return '';
+    }
+    var cookies = (document.cookie || '').split(';');
+    var nameEq = name + '=';
+    for (var i = 0; i < cookies.length; i += 1) {
+      var cookie = cookies[i] ? cookies[i].trim() : '';
+      if (!cookie) {
+        continue;
+      }
+      if (cookie.indexOf(nameEq) === 0) {
+        return decodeURIComponent(cookie.substring(nameEq.length));
+      }
+    }
+    return '';
+  }
+
+  function buildTangerinoAuthContext() {
+    var employerId = getCookieValue(OFFER_COOKIE_KEY);
+    var bearerToken = getCookieValue(USER_BEARER_COOKIE);
+    var userId = getCookieValue(USER_ID_COOKIE);
+    var userType = getCookieValue(USER_TYPE_COOKIE);
+
+    var trimmedEmployerId = employerId ? String(employerId).trim() : '';
+    var trimmedBearer = bearerToken ? String(bearerToken).trim() : '';
+    var trimmedUserId = userId ? String(userId).trim() : '';
+    var trimmedUserType = userType ? String(userType).trim() : '';
+
+    if (!trimmedEmployerId || !trimmedBearer || !trimmedUserId || !trimmedUserType) {
+      return null;
+    }
+
+    return {
+      employerId: trimmedEmployerId,
+      bearer: trimmedBearer,
+      userId: trimmedUserId,
+      userType: trimmedUserType,
+      headers: {
+        Authorization: 'Bearer ' + trimmedBearer,
+        'Tangerino-User-Id': trimmedUserId,
+        'Tangerino-User-Type': trimmedUserType,
+        'Tangerino-Employer-Id': trimmedEmployerId
+      }
+    };
+  }
+
+  function buildEmployerAuthorizationHeader() {
+    var token = getCookieValue(USER_SESSION_TOKEN_COOKIE);
+    if (!token) {
+      return '';
+    }
+    var trimmed = String(token).trim();
+    if (!trimmed) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  function interpretOfferActivationResponse(rawValue) {
+    if (rawValue === true) {
+      return true;
+    }
+    if (rawValue === false) {
+      return false;
+    }
+    if (typeof rawValue === 'string') {
+      var trimmed = rawValue.trim();
+      if (!trimmed) {
+        return false;
+      }
+      if (trimmed === 'true') {
+        return true;
+      }
+      if (trimmed === 'false') {
+        return false;
+      }
+      var parsed = parseJson(trimmed);
+      if (parsed !== null && parsed !== undefined && parsed !== rawValue) {
+        return interpretOfferActivationResponse(parsed);
+      }
+      return false;
+    }
+    if (rawValue && typeof rawValue === 'object') {
+      if (typeof rawValue.activated === 'boolean') {
+        return rawValue.activated;
+      }
+      if (typeof rawValue.active === 'boolean') {
+        return rawValue.active;
+      }
+    }
+    return false;
+  }
+
+  function triggerAsyncRerender(delay) {
+    if (typeof window === 'undefined' || typeof setTimeout !== 'function') {
+      return;
+    }
+    var safeDelay = typeof delay === 'number' && delay > 0 ? delay : 0;
+    if (safeDelay > 2147483647) {
+      safeDelay = 2147483647;
+    }
+    setTimeout(function () {
+      init(true);
+    }, safeDelay);
+  }
+
+  function requestOfferActivationStatus() {
+    if (offerActivationRequestInFlight) {
+      return;
+    }
+    offerActivationRequestInFlight = true;
+
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function') {
+      offerActivationAllowed = false;
+      offerActivationRequestInFlight = false;
+      return;
+    }
+
+    var employerId = getCookieValue(OFFER_COOKIE_KEY);
+    if (!employerId) {
+      offerActivationAllowed = false;
+      offerActivationRequestInFlight = false;
+      return;
+    }
+
+    var authHeader = buildEmployerAuthorizationHeader();
+    if (!authHeader) {
+      offerActivationAllowed = false;
+      offerActivationRequestInFlight = false;
+      return;
+    }
+
+    var url = buildOfferActivationUrl(employerId);
+
+    window
+      .fetch(url, {
+        headers: {
+          Authorization: authHeader
+        }
+      })
+      .then(function (response) {
+        if (!response || !response.ok) {
+          return false;
+        }
+        return response.text().then(function (text) {
+          return interpretOfferActivationResponse(text);
+        });
+      })
+      .then(function (allowed) {
+        offerActivationAllowed = allowed === true;
+      })
+      .catch(function () {
+        offerActivationAllowed = false;
+      })
+      .then(function () {
+        offerActivationRequestInFlight = false;
+        triggerAsyncRerender();
+      });
+  }
+
+  function extractEnabledModules(payload) {
+    if (!payload || typeof payload !== 'object') {
+      return null;
+    }
+    var item = payload.item;
+    if (!item || typeof item !== 'object') {
+      return null;
+    }
+    var combined = [];
+    if (Array.isArray(item.list)) {
+      combined.push(item.list);
+    }
+    if (item.enableModulesTemporarily === true && Array.isArray(item.listTemporary)) {
+      combined.push(item.listTemporary);
+    }
+    var seen = Object.create(null);
+    var result = [];
+    for (var i = 0; i < combined.length; i += 1) {
+      var sources = combined[i];
+      for (var j = 0; j < sources.length; j += 1) {
+        var normalized = normalizeString(sources[j]);
+        if (!normalized || seen[normalized]) {
+          continue;
+        }
+        seen[normalized] = true;
+        result.push(normalized);
+      }
+    }
+    if (!combined.length) {
+      return [];
+    }
+    return result;
+  }
+
+  function requestUserModulesStatus() {
+    if (userModulesRequestInFlight) {
+      return;
+    }
+
+    if (isModuleCheckDisabled()) {
+      userModulesAllowed = [];
+      userModulesFetchFailed = false;
+      userModulesRequestInFlight = false;
+      userModulesNextRetryAt = 0;
+      return;
+    }
+
+    var now = Date.now();
+    if (userModulesNextRetryAt && now < userModulesNextRetryAt) {
+      return;
+    }
+
+    var authContext = buildTangerinoAuthContext();
+    if (!authContext) {
+      userModulesAllowed = null;
+      userModulesFetchFailed = true;
+      userModulesNextRetryAt = now + USER_MODULES_RETRY_DELAY_MS;
+      triggerAsyncRerender(USER_MODULES_RETRY_DELAY_MS);
+      return;
+    }
+
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function') {
+      userModulesAllowed = null;
+      userModulesFetchFailed = true;
+      userModulesNextRetryAt = now + USER_MODULES_RETRY_DELAY_MS;
+      triggerAsyncRerender(USER_MODULES_RETRY_DELAY_MS);
+      return;
+    }
+
+    userModulesRequestInFlight = true;
+    userModulesFetchFailed = false;
+
+    window
+      .fetch(MODULES_API_URL, {
+        headers: authContext.headers
+      })
+      .then(function (response) {
+        if (!response || !response.ok) {
+          return null;
+        }
+        return response.json();
+      })
+      .then(function (payload) {
+        var modules = extractEnabledModules(payload);
+        if (modules === null) {
+          userModulesAllowed = null;
+          userModulesFetchFailed = true;
+        } else {
+          userModulesAllowed = modules;
+          userModulesFetchFailed = false;
+        }
+      })
+      .catch(function () {
+        userModulesAllowed = null;
+        userModulesFetchFailed = true;
+      })
+      .then(function () {
+        userModulesRequestInFlight = false;
+        if (userModulesFetchFailed) {
+          userModulesNextRetryAt = Date.now() + USER_MODULES_RETRY_DELAY_MS;
+          triggerAsyncRerender(USER_MODULES_RETRY_DELAY_MS);
+        } else {
+          userModulesNextRetryAt = 0;
+          triggerAsyncRerender();
+        }
+      });
+  }
+
+  // Only render the offer if the relevant module is not already enabled for the user.
+  function isModuleEligibleForOffer(config) {
+    if (isModuleCheckDisabled()) {
+      return true;
+    }
+    if (!config || !config.targetModule) {
+      return true;
+    }
+    var normalizedTarget = normalizeString(config.targetModule);
+    if (!normalizedTarget) {
+      return true;
+    }
+    if (userModulesAllowed === null || userModulesFetchFailed) {
+      if (!userModulesRequestInFlight) {
+        requestUserModulesStatus();
+      }
+      return false;
+    }
+    return userModulesAllowed.indexOf(normalizedTarget) === -1;
+  }
+
+  function shouldBypassOfferActivation(config) {
+    return !!(config && (config.force || config.skipActivationCheck === true));
+  }
+
+  function isOfferActivationAllowed(config) {
+    if (shouldBypassOfferActivation(config)) {
+      return true;
+    }
+    if (offerActivationAllowed === true) {
+      return true;
+    }
+    if (offerActivationAllowed === false) {
+      return false;
+    }
+    requestOfferActivationStatus();
+    return false;
+  }
+
+  function getAppcuesModules() {
+    if (modulesCache !== null) {
+      return modulesCache;
+    }
+    var field = document.querySelector('.hiddenAppcuesData');
+    if (!field) {
+      modulesCache = [];
+      return modulesCache;
+    }
+    var rawValue = field.value || field.getAttribute('value') || '';
+    if (!rawValue) {
+      modulesCache = [];
+      return modulesCache;
+    }
+    var decoded = rawValue.replace(/&quot;/g, '"');
+    var parsed = parseJson(decoded);
+    if (!parsed || !parsed.modulos || !parsed.modulos.length) {
+      modulesCache = [];
+      return modulesCache;
+    }
+    modulesCache = parsed.modulos.map(function (moduleName) {
+      return normalizeString(moduleName);
+    });
+    return modulesCache;
+  }
+
+  function userHasRequiredModule(config) {
+    if (!config) {
+      return false;
+    }
+    if (!config.modulesRequired || !config.modulesRequired.length) {
+      return true;
+    }
+    var availableModules = getAppcuesModules();
+    if (!availableModules.length) {
+      return false;
+    }
+    var relation = (config.modulesRelation || 'any').toLowerCase();
+    var required = config.modulesRequired.map(normalizeString);
+    if (relation === 'all') {
+      for (var i = 0; i < required.length; i += 1) {
+        if (required[i] && availableModules.indexOf(required[i]) === -1) {
+          return false;
+        }
+      }
+      return true;
+    }
+    for (var j = 0; j < required.length; j += 1) {
+      if (required[j] && availableModules.indexOf(required[j]) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function storageFlagAvailable(key) {
+    var storages = [window.localStorage, window.sessionStorage];
+    for (var i = 0; i < storages.length; i += 1) {
+      var value = safeStorageGet(storages[i], key);
+      if (value === null || value === undefined) {
+        continue;
+      }
+      if (value === 'true' || value === '1' || value === 1 || value === true) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function hasUserPlayedGame(config) {
+    if (!config || config.requireGamePlayed === false) {
+      return true;
+    }
+
+    if (window.blackFridayGamePlayed === true) {
+      return true;
+    }
+    if (window.blackFridayGame && window.blackFridayGame.played) {
+      return true;
+    }
+    if (window.blackFridayGameStatus && window.blackFridayGameStatus.played) {
+      return true;
+    }
+    if (window.blackFridayGame && typeof window.blackFridayGame.hasPlayed === 'function' && window.blackFridayGame.hasPlayed()) {
+      return true;
+    }
+
+    var customKeys = Array.isArray(config.gameFlagKeys) ? config.gameFlagKeys : [];
+    var keys = GAME_FLAG_KEYS.slice();
+    for (var i = 0; i < customKeys.length; i += 1) {
+      if (keys.indexOf(customKeys[i]) === -1) {
+        keys.push(customKeys[i]);
+      }
+    }
+    for (var j = 0; j < keys.length; j += 1) {
+      if (typeof keys[j] === 'string' && storageFlagAvailable(keys[j])) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function getCloseStorageKey(config) {
+    return (config && config.closeStorageKey) || CLOSE_STORAGE_KEY;
+  }
+
+  function stopCooldownWatcherForKey(key) {
+    if (!key) {
+      return;
+    }
+    var watcher = cooldownWatchers[key];
+    if (!watcher) {
+      return;
+    }
+    clearInterval(watcher);
+    delete cooldownWatchers[key];
+  }
+
+  function startCooldownWatcher(config) {
+    if (!config || typeof window === 'undefined' || typeof window.setInterval !== 'function') {
+      return;
+    }
+    var key = getCloseStorageKey(config);
+    if (!key) {
+      return;
+    }
+    stopCooldownWatcherForKey(key);
+    var timer = setInterval(function () {
+      if (!window.localStorage) {
+        stopCooldownWatcherForKey(key);
+        return;
+      }
+      var value = safeStorageGet(window.localStorage, key);
+      if (!value) {
+        stopCooldownWatcherForKey(key);
+        if (rerenderTimeoutId) {
+          clearTimeout(rerenderTimeoutId);
+          rerenderTimeoutId = null;
+        }
+        triggerAsyncRerender();
+      }
+    }, COOLDOWN_WATCH_INTERVAL);
+    cooldownWatchers[key] = timer;
+  }
+
+  function getLastCloseTimestamp(config) {
+    var key = getCloseStorageKey(config);
+    if (!key) {
+      return 0;
+    }
+    var raw = safeStorageGet(window.localStorage, key);
+    if (!raw) {
+      return 0;
+    }
+    var parsed = parseInt(raw, 10);
+    if (isNaN(parsed)) {
+      return 0;
+    }
+    return parsed;
+  }
+
+  function getRemainingCooldown(config) {
+    if (!config) {
+      return 0;
+    }
+    var cooldown = typeof config.cooldownMs === 'number' ? config.cooldownMs : CLOSE_COOLDOWN_MS;
+    if (!cooldown || cooldown <= 0) {
+      return 0;
+    }
+    var lastClosed = getLastCloseTimestamp(config);
+    if (!lastClosed) {
+      return 0;
+    }
+    var now = Date.now();
+    if (!isFinite(now)) {
+      return cooldown;
+    }
+    var elapsed = now - lastClosed;
+    if (elapsed < 0) {
+      elapsed = 0;
+    }
+    if (elapsed >= cooldown) {
+      clearCloseTimestamp(config, { trigger: false });
+      return 0;
+    }
+    var remaining = cooldown - elapsed;
+    return remaining > 0 ? remaining : 0;
+  }
+
+  function saveCloseTimestamp(config) {
+    var key = getCloseStorageKey(config);
+    if (!key) {
+      return;
+    }
+    safeStorageSet(window.localStorage, key, String(Date.now()));
+    startCooldownWatcher(config);
+  }
+
+  function clearCloseTimestamp(config, options) {
+    var key = getCloseStorageKey(config);
+    if (!key) {
+      return;
+    }
+    safeStorageRemove(window.localStorage, key);
+    stopCooldownWatcherForKey(key);
+    if (!options || options.trigger !== false) {
+      triggerAsyncRerender();
+    }
+  }
+
+  function scheduleRerender(delay) {
+    if (!delay || delay <= 0) {
+      return;
+    }
+    if (rerenderTimeoutId) {
+      clearTimeout(rerenderTimeoutId);
+    }
+    var safeDelay = delay + 250;
+    if (safeDelay > 2147483647) {
+      safeDelay = 2147483647;
+    }
+    rerenderTimeoutId = setTimeout(function () {
+      rerenderTimeoutId = null;
+      init(true);
+    }, safeDelay);
+  }
+
+  function sanitizeExtractedPageKey(value) {
+    if (!value) {
+      return '';
+    }
+    var pageKey = String(value);
+    var wicketIndex = pageKey.indexOf('-wicket:');
+    if (wicketIndex !== -1) {
+      pageKey = pageKey.substring(0, wicketIndex);
+    }
+    return pageKey.replace(/^-+|-+$/g, '');
+  }
+
+  function extractPageKey() {
+    var pathname = window.location.pathname || '';
+    var nestedMatch = pathname.match(/\/pages\/([^?#]+)/i);
+    if (nestedMatch && nestedMatch[1]) {
+      var nestedKey = decodeURIComponent(nestedMatch[1])
+        .replace(/\/+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .toLowerCase();
+      nestedKey = sanitizeExtractedPageKey(nestedKey);
+      if (nestedKey) {
+        return nestedKey;
+      }
+    }
+
+    var href = window.location.href || '';
+    var hrefMatch = href.match(/\/pages\/([^?#]+)/i);
+    if (hrefMatch && hrefMatch[1]) {
+      var hrefKey = decodeURIComponent(hrefMatch[1])
+        .replace(/\/+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .toLowerCase();
+      hrefKey = sanitizeExtractedPageKey(hrefKey);
+      if (hrefKey) {
+        return hrefKey;
+      }
+    }
+
+    var search = window.location.search || '';
+    var bookmarkMatch = search.match(/wicket:bookmarkablePage=([^&]+)/i);
+    if (bookmarkMatch && bookmarkMatch[1]) {
+      var decoded = decodeURIComponent(bookmarkMatch[1]);
+      var parts = decoded.split('.');
+      var className = parts[parts.length - 1] || '';
+      className = className.replace(/Page$/i, '');
+      if (className) {
+        var bookmarkKey = className
+          .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+          .replace(/_/g, '-')
+          .toLowerCase();
+        bookmarkKey = sanitizeExtractedPageKey(bookmarkKey);
+        if (bookmarkKey) {
+          return bookmarkKey;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function buildBaseConfig() {
+    var debugKey = getDebugPageKey();
+    if (debugKey) {
+      var debugRule = PATH_RULES[debugKey];
+      if (debugRule) {
+        var debugCloseKey = 'debug-' + (debugRule.closeStorageKey || CLOSE_STORAGE_KEY);
+        return mergeConfigs({}, debugRule, {
+          pageKey: debugKey,
+          force: true,
+          requireGamePlayed: false,
+          modulesRequired: [],
+          cooldownMs: 0,
+          closeStorageKey: debugCloseKey,
+          debugSource: 'global:' + DEBUG_GLOBAL_KEY
+        });
+      }
+    }
+
+    var pageKey = extractPageKey();
+    if (!pageKey) {
+      return null;
+    }
+    var rule = PATH_RULES[pageKey];
+    if (!rule) {
+      return null;
+    }
+    var config = mergeConfigs({}, rule);
+    config.pageKey = pageKey;
+    return config;
+  }
+
+  function computeFinalConfig(overrides) {
+    var sources = [];
+    var hasBase = !!baseConfig;
+    var forceDisplay = overrides && overrides.force;
+    if (!hasBase && !forceDisplay) {
+      return null;
+    }
+    sources.push(DEFAULT_BASE_CONFIG);
+    if (hasBase) {
+      sources.push(baseConfig);
+    }
+    if (overrides) {
+      sources.push(overrides);
+    }
+    var finalConfig = mergeConfigs.apply(null, sources);
+    if (!finalConfig.pageKey && baseConfig && baseConfig.pageKey) {
+      finalConfig.pageKey = baseConfig.pageKey;
+    }
+    return finalConfig;
+  }
+
+  function shouldDisplay(config) {
+    if (!config) {
+      return false;
+    }
+
+    if (!isOfferActivationAllowed(config)) {
+      return false;
+    }
+
+    if (config.enabled === false) {
+      return false;
+    }
+
+    if (!config.force) {
+      var shouldEnforceGame =
+        config.requireGamePlayed !== false && offerActivationAllowed !== true;
+      if (shouldEnforceGame && !hasUserPlayedGame(config)) {
+        return false;
+      }
+      if (!userHasRequiredModule(config)) {
+        return false;
+      }
+      if (!isModuleEligibleForOffer(config)) {
+        return false;
+      }
+      var remainingCooldown = getRemainingCooldown(config);
+      if (remainingCooldown > 0) {
+        startCooldownWatcher(config);
+        scheduleRerender(remainingCooldown);
+        return false;
+      }
+    }
+
+    if (typeof config.shouldDisplay === 'function') {
+      try {
+        if (config.shouldDisplay(config) === false) {
+          return false;
+        }
+      } catch (error) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  function ensureStyle() {
+    if (document.getElementById(STYLE_ID)) {
+      return;
+    }
+    var styleTarget = document.head || document.getElementsByTagName('head')[0];
+    if (!styleTarget) {
+      return;
+    }
+    var styleContent = [
+      '#' + CARD_ID + ' {',
+      '  position: fixed;',
+      '  right: 60px;',
+      '  bottom: ' + MIN_BOTTOM_OFFSET + 'px;',
+      '  margin-right: 40px;',
+      '  z-index: 9999;',
+      '  color: #1c1c1e;',
+      '  font-family: "Inter", "Segoe UI", Arial, sans-serif;',
+      '  max-width: calc(100vw - 40px);',
+      '}',
+      '#' + CARD_ID + '.is-hidden {',
+      '  display: none !important;',
+      '}',
+      '#' + CARD_ID + ' .bf-card__surface {',
+      '  background: #ffffff;',
+      '  border-radius: 20px;',
+      '  padding: 24px 16px;',
+      '  box-shadow: 0 12px 32px rgba(7, 15, 44, 0.18);',
+      '  border: 1px solid rgba(16, 23, 71, 0.08);',
+      '  min-width: 360px;',
+      '  max-width: 500px;',
+      '  position: relative;',
+      '  display: flex;',
+      '  flex-direction: column;',
+      '  gap: 16px;',
+      '}',
+      '#' + CARD_ID + ' .bf-card__header {',
+      '  display: flex;',
+      '  gap: 16px;',
+      '  align-items: flex-start;',
+      '  margin-top: 8px;',
+      '}',
+      '#' + CARD_ID + ' .bf-card__icon {',
+      '  width: 52px;',
+      '  height: 52px;',
+      '  border-radius: 16px;',
+      '  background: linear-gradient(135deg, #432559 0%, #000000 100%);',
+      '  display: flex;',
+      '  align-items: center;',
+      '  justify-content: center;',
+      '  flex-shrink: 0;',
+      '  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);',
+      '}',
+      '#' + CARD_ID + ' .bf-card__title {',
+      '  margin: 0;',
+      '  font-size: 17px !important;',
+      '  font-weight: 600 !important;',
+      '  line-height: 22px !important;',
+      '}',
+      '#' + CARD_ID + ' .bf-card__description {',
+      '  margin: 6px 0 0 0;',
+      '  font-size: 14px;',
+      '  line-height: 20px;',
+      '  color: #4a4a4d;',
+      '}',
+      '#' + CARD_ID + ' .bf-card__close {',
+      '  position: absolute;',
+      '  top: 8px;',
+      '  right: 22px;',
+      '  width: 32px;',
+      '  height: 32px;',
+      '  border-radius: 16px;',
+      '  border: none;',
+      '  background: rgba(22, 22, 35, 0.04);',
+      '  color: #1c1c1e;',
+      '  font-size: 18px !important;',
+      '  font-weight: 600;',
+      '  line-height: 1;',
+      '  cursor: pointer;',
+      '  transition: background 0.2s ease, transform 0.18s ease;',
+      '  min-width: 32px !important;',
+      '  padding: 0 !important;',
+      '}',
+      '#' + CARD_ID + ' .bf-card__close:hover {',
+      '  background: rgba(22, 22, 35, 0.1);',
+      '  transform: scale(1.05);',
+      '}',
+      '#' + CARD_ID + ' .bf-card__close:active {',
+      '  transform: scale(0.98);',
+      '}',
+      '#' + CARD_ID + ' .bf-card__footer {',
+      '  display: flex;',
+      '  justify-content: flex-end;',
+      '}',
+      '#' + CARD_ID + ' .bf-card__cta {',
+      '  display: inline-flex;',
+      '  align-items: center;',
+      '  gap: 10px;',
+      '  padding: 12px 22px;',
+      '  border-radius: 8px;',
+      '  background: linear-gradient(135deg, #432559 0%, #000000 100%);',
+      '  color: #2fe1a7;',
+      '  font-size: 14px;',
+      '  font-weight: 600;',
+      '  text-decoration: none;',
+      '  box-shadow: 0 8px 20px rgba(34, 12, 66, 0.45);',
+      '  transition: transform 0.18s ease, box-shadow 0.18s ease;',
+      '}',
+      '#' + CARD_ID + ' .bf-card__cta:hover {',
+      '  transform: translateY(-1px);',
+      '  box-shadow: 0 10px 22px rgba(34, 12, 66, 0.45);',
+      '}',
+      '#' + CARD_ID + ' .bf-card__cta:active {',
+      '  transform: translateY(0);',
+      '  box-shadow: 0 6px 18px rgba(34, 12, 66, 0.4);',
+      '}',
+      '#' + CARD_ID + ' .bf-card__cta-icon {',
+      '  display: inline-flex;',
+      '}',
+      '@media (max-width: 768px) {',
+      '  #' + CARD_ID + ' {',
+      '    right: 20px;',
+      '    bottom: ' + MIN_BOTTOM_OFFSET + 'px;',
+      '    margin-right: 20px;',
+      '  }',
+      '  #' + CARD_ID + ' .bf-card__surface {',
+      '    min-width: auto;',
+      '    width: 100%;',
+      '    max-width: 360px;',
+      '  }',
+      '}',
+      '@media (max-width: 480px) {',
+      '  #' + CARD_ID + ' {',
+      '    right: 16px;',
+      '    left: 16px;',
+      '    bottom: ' + MIN_BOTTOM_OFFSET + 'px;',
+      '    margin-right: 0;',
+      '    max-width: none;',
+      '  }',
+      '  #' + CARD_ID + ' .bf-card__surface {',
+      '    max-width: none;',
+      '    width: 100%;',
+      '  }',
+      '}'
+    ].join('\n');
+    var styleElement = document.createElement('style');
+    styleElement.id = STYLE_ID;
+    styleElement.type = 'text/css';
+    styleElement.appendChild(document.createTextNode(styleContent));
+    styleTarget.appendChild(styleElement);
+  }
+
+  function getCrownIconMarkup(size) {
+    var resolvedSize = String(size || 24);
+    return [
+      '<svg width="',
+      resolvedSize,
+      '" height="',
+      resolvedSize,
+      '" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">',
+      '<path d="M4.6 10.1L3.9 6.4 8.2 9.3 12 3.8 15.8 9.3 20.1 6.4 19.4 10.1 18.3 16.4H5.7L4.6 10.1Z" fill="#2fe1a7"/>',
+      '<rect x="6.5" y="16.4" width="11" height="2.2" rx="1.1" fill="#2fe1a7"/>',
+      '</svg>'
+    ].join('');
+  }
+
+  function buildCard() {
+    if (document.getElementById(CARD_ID)) {
+      return null;
+    }
+
+    var container = document.createElement('div');
+    container.id = CARD_ID;
+    container.className = 'is-hidden s-card';
+
+    var surface = document.createElement('div');
+    surface.className = 'bf-card__surface';
+    container.appendChild(surface);
+
+    var closeButton = document.createElement('button');
+    closeButton.className = 'bf-card__close';
+    closeButton.type = 'button';
+    closeButton.setAttribute('aria-label', 'Fechar aviso');
+    closeButton.innerHTML = '&times;';
+    surface.appendChild(closeButton);
+
+    var header = document.createElement('div');
+    header.className = 'bf-card__header';
+    surface.appendChild(header);
+
+    var iconWrapper = document.createElement('div');
+    iconWrapper.className = 'bf-card__icon';
+    iconWrapper.innerHTML = getCrownIconMarkup(24);
+    header.appendChild(iconWrapper);
+
+    var textWrapper = document.createElement('div');
+    textWrapper.className = 'bf-card__text';
+    header.appendChild(textWrapper);
+
+    var titleElement = document.createElement('h3');
+    titleElement.className = 'bf-card__title s-title';
+    textWrapper.appendChild(titleElement);
+
+    var descriptionElement = document.createElement('p');
+    descriptionElement.className = 'bf-card__description';
+    textWrapper.appendChild(descriptionElement);
+
+    var footer = document.createElement('div');
+    footer.className = 'bf-card__footer';
+    surface.appendChild(footer);
+
+    var cta = document.createElement('a');
+    cta.className = 'bf-card__cta s-find-category s-tag-premium';
+    cta.href = MARKETPLACE_PATH;
+    cta.setAttribute('data-role', 'bf-card-cta');
+    cta.setAttribute('aria-label', 'Aproveitar o desconto');
+    cta.target = DEFAULT_CTA_TARGET;
+    cta.rel = DEFAULT_CTA_REL;
+    footer.appendChild(cta);
+
+    var ctaIcon = document.createElement('span');
+    ctaIcon.className = 'bf-card__cta-icon';
+    ctaIcon.setAttribute('aria-hidden', 'true');
+    ctaIcon.innerHTML = getCrownIconMarkup(18);
+    cta.appendChild(ctaIcon);
+
+    var ctaLabel = document.createElement('span');
+    ctaLabel.className = 'bf-card__cta-label';
+    cta.appendChild(ctaLabel);
+
+    return {
+      container: container,
+      closeButton: closeButton,
+      title: titleElement,
+      description: descriptionElement,
+      cta: cta,
+      ctaLabel: ctaLabel
+    };
+  }
+
+  function hideCard(element) {
+    if (element) {
+      element.classList.add('is-hidden');
+    }
+  }
+
+  function showCard(element) {
+    if (element) {
+      element.classList.remove('is-hidden');
+    }
+  }
+
+  function getActiveConfig() {
+    return activeConfig || {};
+  }
+
+  function buildTrackedCtaHref(href, config) {
+    if (!href) {
+      return href;
+    }
+    var sIdValue = (config && config.sId) || DEFAULT_TAG;
+    var sCategoryValue = (config && config.sCategory) || DEFAULT_TAG;
+    var isProtocolRelative = href.indexOf('//') === 0;
+    var isRelative = href.indexOf('://') === -1 && !isProtocolRelative;
+    var url;
+    try {
+      if (typeof URL === 'function') {
+        if (isRelative || isProtocolRelative) {
+          var base = 'https://app.tangerino.com.br';
+          if (typeof window !== 'undefined' && window.location && window.location.origin) {
+            base = window.location.origin;
+          }
+          url = new URL(href, base);
+        } else {
+          url = new URL(href);
+        }
+        url.searchParams.set('s-id', sIdValue);
+        url.searchParams.set('s-category', sCategoryValue);
+        if (isRelative) {
+          return url.pathname + (url.search || '') + (url.hash || '');
+        }
+        if (isProtocolRelative) {
+          return '//' + url.host + (url.pathname || '') + (url.search || '') + (url.hash || '');
+        }
+        return url.toString();
+      }
+    } catch (error) {
+      // Fall back to manual handling below.
+    }
+
+    var cleanedHref = href.replace(/([?&])s-id=[^&#]*/gi, '$1').replace(/([?&])s-category=[^&#]*/gi, '$1');
+    cleanedHref = cleanedHref.replace(/[?&]{2,}/g, function (match) {
+      return match.indexOf('?') !== -1 ? '?' : '&';
+    });
+    var hashIndex = cleanedHref.indexOf('#');
+    var baseHref = hashIndex === -1 ? cleanedHref : cleanedHref.substring(0, hashIndex);
+    var hashPart = hashIndex === -1 ? '' : cleanedHref.substring(hashIndex);
+    baseHref = baseHref.replace(/[?&]$/, '');
+    var separator = baseHref.indexOf('?') === -1 ? '?' : '&';
+    var params =
+      's-id=' + encodeURIComponent(sIdValue) + '&s-category=' + encodeURIComponent(sCategoryValue);
+    return baseHref + separator + params + hashPart;
+  }
+
+  function applyConfig(elements, config) {
+    if (!elements || !config) {
+      return;
+    }
+    activeConfig = cloneConfig(config) || {};
+    elements.title.textContent = config.title || '';
+    elements.description.textContent = config.description || '';
+    elements.ctaLabel.textContent = config.ctaText || '';
+    elements.cta.setAttribute('aria-label', config.ctaText || '');
+    if (config.ctaHref) {
+      var trackedHref = buildTrackedCtaHref(config.ctaHref, config);
+      elements.cta.setAttribute('href', trackedHref);
+      activeConfig.trackedCtaHref = trackedHref;
+    } else {
+      elements.cta.removeAttribute('href');
+    }
+    if (config.ctaTarget) {
+      elements.cta.target = config.ctaTarget;
+    } else {
+      elements.cta.removeAttribute('target');
+    }
+    if (config.ctaRel) {
+      elements.cta.rel = config.ctaRel;
+    } else {
+      elements.cta.removeAttribute('rel');
+    }
+    var sId = config.sId || DEFAULT_TAG;
+    var sCategory = config.sCategory || DEFAULT_TAG;
+    elements.cta.setAttribute('s-id', sId);
+    elements.cta.setAttribute('s-category', sCategory);
+    elements.cta.dataset.sId = sId;
+    elements.cta.dataset.sCategory = sCategory;
+    if (config.tabIndex !== undefined) {
+      elements.container.tabIndex = config.tabIndex;
+    }
+    elements.container.setAttribute('data-page-key', config.pageKey || '');
+  }
+
+  function bindInteractions(elements) {
+    if (!elements || interactionsBound) {
+      return;
+    }
+    interactionsBound = true;
+
+    elements.closeButton.addEventListener('click', function () {
+      hideCard(elements.container);
+      var config = getActiveConfig();
+      saveCloseTimestamp(config);
+      var cooldown = typeof config.cooldownMs === 'number' ? config.cooldownMs : CLOSE_COOLDOWN_MS;
+      if (cooldown > 0) {
+        scheduleRerender(cooldown);
+      }
+      if (config && typeof config.onClose === 'function') {
+        try {
+          config.onClose.call(elements.container, config);
+        } catch (error) {
+          // Ignore handler errors.
+        }
+      }
+    });
+
+    elements.cta.addEventListener('click', function (event) {
+      var config = getActiveConfig();
+      var preventDefault = (!elements.cta.getAttribute('href') || elements.cta.getAttribute('href') === '#');
+      if (config && typeof config.onCtaClick === 'function') {
+        try {
+          var result = config.onCtaClick.call(elements.cta, event, config);
+          if (result === false) {
+            preventDefault = false;
+          }
+        } catch (error) {
+          // Ignore errors in custom handler.
+        }
+      }
+      if (preventDefault) {
+        event.preventDefault();
+      }
+      if (config.hideOnCta !== false) {
+        hideCard(elements.container);
+      }
+      if (config) {
+        saveCloseTimestamp(config);
+        var cooldown =
+          typeof config.cooldownMs === 'number' ? config.cooldownMs : CLOSE_COOLDOWN_MS;
+        if (cooldown > 0) {
+          scheduleRerender(cooldown);
+        }
+      }
+    });
+  }
+
+  function isElementVisible(element) {
+    if (!element) {
+      return false;
+    }
+    var style = window.getComputedStyle(element);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+      return false;
+    }
+    var rect = element.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+
+  function adjustCardForChat(container) {
+    if (!container) {
+      return;
+    }
+    var maxOffset = MIN_BOTTOM_OFFSET;
+    for (var i = 0; i < CHAT_SELECTORS.length; i += 1) {
+      var elements = document.querySelectorAll(CHAT_SELECTORS[i]);
+      if (!elements.length) {
+        continue;
+      }
+      for (var j = 0; j < elements.length; j += 1) {
+        var chatElement = elements[j];
+        if (!isElementVisible(chatElement)) {
+          continue;
+        }
+        var rect = chatElement.getBoundingClientRect();
+        var offset = rect.height + MIN_BOTTOM_OFFSET + CHAT_EXTRA_GAP;
+        if (offset > maxOffset) {
+          maxOffset = offset;
+        }
+      }
+    }
+    container.style.bottom = maxOffset + 'px';
+  }
+
+  function stopChatWatcher() {
+    if (chatAdjustTimer) {
+      clearInterval(chatAdjustTimer);
+      chatAdjustTimer = null;
+    }
+    if (chatResizeHandlerBound) {
+      window.removeEventListener('resize', onResizeAdjust);
+      chatResizeHandlerBound = false;
+    }
+  }
+
+  function onResizeAdjust() {
+    if (elementsRef && elementsRef.container) {
+      adjustCardForChat(elementsRef.container);
+    }
+  }
+
+  function startChatWatcher(container) {
+    stopChatWatcher();
+    adjustCardForChat(container);
+    chatAdjustTimer = setInterval(function () {
+      if (!elementsRef || !elementsRef.container || !document.body.contains(elementsRef.container)) {
+        stopChatWatcher();
+        return;
+      }
+      adjustCardForChat(elementsRef.container);
+    }, CHAT_ADJUST_INTERVAL);
+    if (!chatResizeHandlerBound) {
+      window.addEventListener('resize', onResizeAdjust);
+      chatResizeHandlerBound = true;
+    }
+  }
+
+  function destroyCard() {
+    if (elementsRef && elementsRef.container && elementsRef.container.parentNode) {
+      elementsRef.container.parentNode.removeChild(elementsRef.container);
+    }
+    stopChatWatcher();
+    elementsRef = null;
+    interactionsBound = false;
+    activeConfig = null;
+  }
+
+  function ensureApiReference() {
+    if (!window[API_KEY]) {
+      window[API_KEY] = {
+        get element() {
+          return elementsRef ? elementsRef.container : null;
+        },
+        hide: function () {
+          if (elementsRef && elementsRef.container) {
+            hideCard(elementsRef.container);
+          }
+        },
+        show: function () {
+          init(true);
+          if (elementsRef && elementsRef.container) {
+            showCard(elementsRef.container);
+          }
+        },
+        update: function (nextConfig) {
+          if (!nextConfig || typeof nextConfig !== 'object') {
+            return;
+          }
+          updateOverrides(nextConfig);
+          init(true);
+        },
+        resetCloseCooldown: function () {
+          clearCloseTimestamp(getActiveConfig(), { trigger: false });
+          init(true);
+        },
+        clearConfig: function () {
+          clearOverrides();
+          init(true);
+        }
+      };
+    }
+  }
+
+  function init(forceRecompute) {
+    if (!document.body) {
+      return;
+    }
+
+    if (forceRecompute || baseConfig === null) {
+      baseConfig = buildBaseConfig();
+    }
+
+    var overrides = getOverrides();
+    var finalConfig = computeFinalConfig(overrides);
+
+    ensureApiReference();
+
+    if (!finalConfig || !shouldDisplay(finalConfig)) {
+      destroyCard();
+      return;
+    }
+
+    ensureStyle();
+
+    if (!elementsRef) {
+      var newElements = buildCard();
+      if (!newElements) {
+        elementsRef = {
+          container: document.getElementById(CARD_ID),
+          closeButton: document.querySelector('#' + CARD_ID + ' .bf-card__close'),
+          title: document.querySelector('#' + CARD_ID + ' .bf-card__title'),
+          description: document.querySelector('#' + CARD_ID + ' .bf-card__description'),
+          cta: document.querySelector('#' + CARD_ID + ' .bf-card__cta'),
+          ctaLabel: document.querySelector('#' + CARD_ID + ' .bf-card__cta-label')
+        };
+      } else {
+        elementsRef = newElements;
+        document.body.appendChild(elementsRef.container);
+      }
+    }
+
+    if (!elementsRef || !elementsRef.container) {
+      return;
+    }
+
+    bindInteractions(elementsRef);
+    applyConfig(elementsRef, finalConfig);
+    showCard(elementsRef.container);
+    startChatWatcher(elementsRef.container);
+    ensureApiReference();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      init(true);
+    });
+  } else {
+    init(true);
+  }
+
+  if (window.Wicket && window.Wicket.Event && typeof window.Wicket.Event.subscribe === 'function') {
+    window.Wicket.Event.subscribe('/domready', function () {
+      init(true);
+    });
+  }
+}());

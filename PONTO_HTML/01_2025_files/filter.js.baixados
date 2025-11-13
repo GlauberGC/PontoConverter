@@ -1,0 +1,200 @@
+function findFuncionarioById(id) {
+  var list = JSON.parse($('.hiddenListFuncionarios').val() || '[]');
+  return list.filter(function (funcionario) {
+    return funcionario.id === parseInt(id);
+  }).pop();
+}
+
+function reloadLocaisTrabalho() {
+  var currentValue = $('.dropdown-local-trabalho').val();
+
+  $('.dropdown-local-trabalho').select2().empty();
+  $('.dropdown-local-trabalho').select2({
+    allowClear: true,
+    templateResult: function (d) {
+      return $(d.text);
+    },
+    templateSelection: function (d) {
+      return $(d.text);
+    },
+    data: filterLocalTrabalho(),
+    theme: "bootstrap"
+  });
+
+  if (currentValue) {
+    $('.dropdown-local-trabalho').val(currentValue);
+    $('.dropdown-local-trabalho').trigger('change');
+  }
+}
+
+function filterLocalTrabalho() {
+  var locaisTrabalho = JSON.parse($('.hiddenListLocais').val() || '[]');
+  var empresaId = $('.dropdown-empresa').val();
+
+  var list = locaisTrabalho.filter(function (localTrabalho) {
+    var result = true;
+    if (empresaId) {
+      result = localTrabalho.empresaId === parseInt(empresaId);
+    }
+
+    return result;
+  }).map(function (localTrabalho) {
+    return {
+      id: localTrabalho.id,
+      text: localTrabalho.ativo ?
+        (`<span style="font-size: 13px;"> ${localTrabalho.description} </span>`) :
+        (`<span style="font-size: 13px;"> ${localTrabalho.description} <small style="font-size: 9px;"><strong> - Inativo</strong></small></span>`)
+    }
+  });
+
+  list.unshift({id: '', text: '<span style="font-size: 13px;">Todos</span>', selected: 'selected'});
+  return list;
+}
+
+function reloadFuncionariosTelaPRO() {
+  var totalColabsAtivos = JSON.parse($('.hiddenListFuncionarios').val()).filter(e =>  !e.demitido).length;
+
+  $('.dropdown-funcionario').select2().empty();
+  $('.dropdown-funcionario').select2({
+    allowClear: true,
+    templateResult: function (d) {
+      return $(d.text);
+    },
+    templateSelection: function (d) {
+      return $(d.text);
+    },
+    language: {
+      inputTooShort: function (a) {
+        return "Favor digitar " + (a.minimum - a.input.length) + " ou mais caracteres"
+      }
+    },
+    minimumInputLength: totalColabsAtivos > 2000 ? 3 : 0,
+    data: filterFuncionarios(),
+    theme: "bootstrap"
+  });
+
+  $('.dropdown-funcionario').trigger('change');
+}
+
+function reloadFuncionarios() {
+  var currentValue = $('.dropdown-funcionario').val();
+
+  var totalColabsAtivos = JSON.parse($('.hiddenListFuncionarios').val()).filter(e =>  !e.demitido).length;
+
+  $('.dropdown-funcionario').select2().empty();
+  $('.dropdown-funcionario').select2({
+    allowClear: true,
+    templateResult: function (d) {
+      return $(d.text);
+    },
+    templateSelection: function (d) {
+      return $(d.text);
+    },
+    language: {
+      inputTooShort: function (a) {
+        return "Favor digitar " + (a.minimum - a.input.length) + " ou mais caracteres"
+      }
+    },
+    minimumInputLength: totalColabsAtivos > 2000 ? 3 : 0,
+    data: filterFuncionarios(),
+    theme: "bootstrap"
+  });
+
+  $('.dropdown-funcionario').val(currentValue || '');
+  $('.dropdown-funcionario').trigger('change');
+}
+
+
+function getFilteredList() {
+  var funcionarios = JSON.parse($('.hiddenListFuncionarios').val() || '[]');
+  var statusFuncionario = $('.dropdown-status-employee').val();
+  var empresaId = $('.dropdown-empresa').val();
+  var gestorId = !$('.dropdown-gestor').prop('disabled') ? $('.dropdown-gestor').val() : null;
+  var localTrabalhoId = $('.dropdown-local-trabalho').val();
+  var zonaVenda = $('.dropdown-zonaVenda').val();
+  var cargoId = $('.dropdown-cargo').val();
+  var regraPontoId = !$('.dropdown-regra-ponto').prop('disabled') ? $('.dropdown-regra-ponto').val() : null;
+
+  return funcionarios.filter(function (funcionario) {
+    if (empresaId != undefined && empresaId != "" && funcionario.empresaId !== parseInt(empresaId)) {
+      return false;
+    }
+
+    if (localTrabalhoId != undefined && localTrabalhoId != "" && (!funcionario.locaisTrabalho || !funcionario.locaisTrabalho.includes(parseInt(localTrabalhoId)))) {
+      return false;
+    }
+
+    if (gestorId != undefined && gestorId != "" && (!funcionario.gestores || !funcionario.gestores.includes(parseInt(gestorId)))) {
+      return false;
+    }
+
+    if (zonaVenda != undefined && zonaVenda != "" && funcionario.zonaVenda !== zonaVenda.toString()) {
+      return false;
+    }
+
+    if (cargoId != undefined && cargoId != "" && funcionario.cargoId !== parseInt(cargoId)) {
+      return false;
+    }
+
+    if (regraPontoId != undefined && regraPontoId != "" && (!funcionario.regrasPonto || !funcionario.regrasPonto.includes(parseInt(regraPontoId)))) {
+      return false;
+    }
+
+    if (statusFuncionario === '1' && funcionario.demitido) {
+      return false;
+    }
+
+    if (statusFuncionario === '2' && !funcionario.demitido) {
+      return false;
+    }
+
+    return true;
+
+  }).map(function (funcionario) {
+    return {
+      id: funcionario.id,
+      text: funcionario.demitido && funcionario.dataDemissao ?
+        (`<span style="font-size: 13px;"> ${funcionario.description} <small style="font-size: 9px;"><strong> - Demitido:</strong> ${funcionario.dataDemissao}  </small></span>`) :
+        (`<span style="font-size: 13px;"> ${funcionario.description} </span>`),
+      title: funcionario.description
+    }
+  });
+}
+
+function filterFuncionarios() {
+  var list = getFilteredList();
+
+  if (list.length == 0) {
+    list.unshift({
+      id: '',
+      text: '<span style="font-size: 13px;">Sem colaboradores para esses filtros</span>',
+      selected: 'selected',
+      title: 'Sem colaboradores para esses filtros'
+    });
+    return list;
+  } else {
+    list.unshift({id: '', text: '<span style="font-size: 13px;">Todos</span>', selected: 'selected', title: 'Todos'});
+    return list;
+  }
+}
+
+function validateFuncionario(value) {
+  var $msgError = $('.error-funcionario');
+  if (value) {
+    var funcionario = findFuncionarioById(value);
+    if (funcionario && funcionario.id) {
+      console.log(funcionario.registraPonto);
+      if (!funcionario.registraPonto) {
+        $msgError.html('⚠️ Colaborador não registra Ponto!');
+        $msgError.show(300);
+        return;
+      }
+      if (funcionario.demitido) {
+        $msgError.html('⚠️ Colaborador demitido!');
+        $msgError.show(300);
+        return;
+      }
+    }
+  }
+  $msgError.hide(300);
+}

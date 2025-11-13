@@ -1,0 +1,437 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap');
+
+.logo-ponto {
+  color: rgba(0, 0, 0, 0);
+  width: 104px;
+  height: 38px;
+  display: block;
+  background: url(../img/novas-img/solides-ponto.svg) no-repeat;
+  margin: var(--margem) var(--margem) 4px;
+}
+
+.contraido .logo-ponto {
+  width: 25px;
+  background-position: -21px 0;
+  background-size: auto 31px;
+}
+
+.option-menu-pricing-funcionalidade-list li, .option-menu-pricing-sub-funcionalidade-list {
+  background-position: unset;
+  padding-left: 10px;
+}
+
+.pricing-ativo.option-menu-pricing-funcionalidade-anchor, ativo.option-menu-pricing-funcionalidade-anchor {
+  box-shadow: 1px 0 var(--cor-primaria) inset;
+  list-style: none !important;
+  align-items: center;
+}
+
+.item-menu.item-modulo-menu-pricing:hover {
+  background-color: var(--light-grey-background-accent);
+  cursor: pointer;
+}
+
+.item-menu.item-modulo-menu-pricing:hover{
+  color: var(--cor-fonte-fraca);
+}
+
+.item-menu.item-modulo-menu-pricing:hover .icone-modulo{
+  color: var(--cor-primaria);
+}
+
+#grey-line-divisor{
+  border-bottom: 1px solid var(--light-grey-accent);
+}
+
+.item-menu.item-modulo-menu-pricing:hover icone-modulo {
+  color: var(--cor-primaria);
+}
+
+.option-menu-pricing-funcionalidade-anchor:hover,
+.option-menu-pricing-sub-funcionalidade-anchor:hover {
+  box-shadow: 1px 0 var(--cor-primaria) inset;
+  color: var(--cor-primaria);
+  cursor: pointer;
+}
+
+.option-menu-pricing-funcionalidade-anchor, .option-menu-pricing-sub-funcionalidade-list {
+  box-shadow: 1px 0 var(--light-grey-accent) inset;
+}
+
+.option-menu-pricing-sub-funcionalidade-anchor.pricing-ativo {
+  color: var(--cor-primaria);
+}
+
+.option-menu-pricing-funcionalidade-list .option-menu-pricing-funcionalidade-anchor.ativo {
+  background-color: var(--light-grey-background-accent);
+  box-shadow: 1px 0 var(--cor-primaria) inset;
+}
+
+.option-menu-pricing-funcionalidade-list .option-menu-pricing-funcionalidade-anchor.ativo {
+  background-color: var(--light-grey-background-accent);
+  box-shadow: 1px 0 var(--cor-primaria) inset;
+}
+
+.chevron-nivel-2, .chevron-nivel-1 {
+  font-size: 9px;
+}
+
+.option-menu-pricing-funcionalidade-anchor.pricing-ativo .chevron-nivel-2 {
+  transform: rotate(90deg);
+}
+
+.item-menu.item-modulo-menu-pricing.pricing-ativo {
+  color: var(--cor-fonte-fraca);
+  font-family: var(--fonte-menu-pricing);
+}
+
+#pricing-tela-inicial {
+  font-size: 12px;
+  color: var(--cor-fonte-fraca);
+  font-family: var(--fonte-menu-pricing);
+}
+
+.item-modulo-menu-pricing:hover .icone-tela-inicial {
+  color:var(--cor-primaria);
+}
+
+.option-menu-pricing-sub-funcionalidade-anchor {
+  box-shadow: 1px 0 var(--light-grey-accent) inset;
+}
+
+.option-menu-pricing-funcionalidade-list .option-menu-pricing-sub-funcionalidade-anchor.pricing-ativo {
+  box-shadow: 1px 0 var(--cor-primaria) inset;
+}
+
+.seta-menu-pricing {
+  background-color: var(--light-grey-background-accent);
+  color: var(--cor-fonte-fraca);
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  position: absolute;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  top: 30px;
+  left: 170px;
+  transition: 300ms;
+}
+
+.seta-menu-pricing:active {
+  color: var(--cor-fonte-fraca);
+}
+
+.seta-menu-pricing:hover, seta-menu-pricing:focus {
+  color: var(--cor-primaria);
+}
+
+.seta-menu-pricing.ativo {
+  transform: rotate(180deg);
+  left: 50px;
+}
+
+.item-modulo-menu-pricing.pricing-ativo .icone-modulo {
+  color: var(--cor-primaria)
+}
+
+.pricing-ativo.item-menu {
+  background: var(--cor-cinza);
+}
+
+.tela-inicio-link.ativo icone-tela-inicial {
+  color: var(--cor-primaria);
+}
+
+.pricing-ativo.tela-inicio-link {
+  background: var(--cor-cinza) !important;
+  color: var(--cor-primaria) !important;
+}
+
+.contraido .icon-label {
+  display: none;
+}
+
+.icon-label {
+  text-align: center;
+  color: #FFFFFF !important;
+  font-size: 8px;
+  font-weight: 600;
+  height: 18px;
+  border-radius: 50px;
+  text-align: center;
+  display: grid;
+  place-items: center;
+  margin: auto 8px auto auto;
+}
+
+.icon-label-pro {
+  background-color: #AF462C;
+  color: #FFFFFF;
+  width: 34px;
+}
+
+.icon-label-beta {
+  background-color: #973BBE;
+  color: #FFFFFF;
+  width: 34px;
+}
+
+.icon-label-novo {
+  background-color: #2B5DE9;
+  color: #FFFFFF;
+  width: 39px;
+}
+
+.icon-label-novidade {
+  background-color: #BBDEFF;
+  color: #2B5DE9 !important;
+  width: 60px;
+}
+
+.icon-label-disponivel {
+  background-color: #BBDEFF;
+  color: #2B5DE9 !important;
+  width: 60px;
+}
+
+.icon-label-atualizacao {
+  background-color: #3239C9;
+  width:8px;
+  height: 8px;
+}
+
+.icon-label-plg {
+  background-color: #FFCA3F !important;
+  color: #894900;
+  height: 20px;
+  width: 30px;
+  background: url(../img/novas-img/icon-plg.svg) no-repeat;
+  background-size: 10px;
+  background-position: center;
+}
+
+.icon-label-conheca {
+  background-color: #3239C9;
+  color: #FFFFFF !important;
+  width: 60px;
+}
+
+.option-menu-pricing-funcionalidade-anchor .alinha-direita {
+  width: fit-content;
+}
+
+.nome-menu-nivel-2{
+  max-width: 70px;
+}
+
+.option-menu-pricing-funcionalidade-anchor.menu-wrapper:hover {
+  background-color: red;
+  background: var(--light-grey-background-accent);
+  cursor: pointer;
+}
+
+.option-menu-pricing-funcionalidade-anchor.menu-wrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 0 9px 9px 0;
+}
+
+.option-menu-pricing-funcionalidade-anchor.menu-wrapper.pricing-ativo{
+  background: var(--light-grey-background-accent);
+  border-radius: 0 9px 9px 0;
+}
+
+.item-menu.item-modulo-menu-pricing {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+}
+
+.item-menu.item-modulo-menu-pricing .nome-menu,
+.option-menu-pricing-funcionalidade-anchor,
+.option-menu-pricing-sub-funcionalidade-anchor, .item-menu.duvidas .oculta-contraido {
+  font-size: 12px;
+  font-family: var(--fonte-menu-pricing);
+}
+
+.item-menu.separador2 {
+  margin-top: auto;
+}
+
+.pricing-ativo + .option-menu-pricing-funcionalidade-list,
+.pricing-ativo + .option-menu-pricing-sub-funcionalidade-list{
+  display: block;
+}
+
+.item-modulo-menu-pricing.pricing-ativo .chevron-nivel-1 {
+  transform: rotate(90deg)
+}
+
+.hover-dinamico {
+  transition: 100ms;
+}
+
+.menu-lateral.hover-dinamico:hover{
+  width: 212px;
+}
+
+.menu-lateral.hover-dinamico:hover .icon-label{
+  display:block;
+}
+
+.menu-lateral.hover-dinamico:hover .logo-ponto {
+  color: rgba(0, 0, 0, 0);
+  width: 104px;
+  height: 38px;
+  display: block;
+  background: url(../img/novas-img/solides-ponto.svg) no-repeat;
+  margin: var(--margem) var(--margem) 4px;
+}
+
+.menu-lateral.hover-dinamico:hover .seta-menu-pricing.ativo{
+  top: 30px;
+  left: 170px;
+  transition: 300ms;
+}
+
+.menu-lateral.hover-dinamico:hover .nome-menu{
+  display:block;
+}
+
+.contraido .hover-dinamico .option-menu-pricing-funcionalidade-list{
+  display: none;
+}
+
+.contraido .hover-dinamico:hover .pricing-ativo + .option-menu-pricing-funcionalidade-list{
+  display: block;
+}
+
+.contraido .hover-dinamico:hover .duvidas .oculta-contraido{
+  display:block;
+}
+
+.contraido .hover-dinamico .contX {
+  max-height:unset;
+}
+
+.contraido .hover-dinamico .contX {
+  padding: 0 0 0 20px;
+  overflow: auto;
+}
+
+
+.contraido .hover-dinamico .item-menu.item-modulo-menu-pricing {
+  justify-content: space-between;
+  gap:unset;
+}
+
+.contraido .hover-dinamico:hover .item-menu.item-modulo-menu-pricing {
+  justify-content: space-evenly;
+  gap:12px;
+}
+
+.itens-menu-pricing-nav-wrapper {
+  display: flex;
+  flex-direction:column;
+  justify-content: space-between;
+  height:92% !important;
+}
+
+.grey-line-top-divisor {
+  border-top: 1px solid var(--light-grey-accent);
+}
+
+.item-menu.duvidas {
+  border-radius: unset;
+}
+
+.icone-suporte{
+  width: 18px;
+  height: 18px;
+  background: url(../img/novas-img/support_agent.svg) no-repeat;
+  background-position: center;
+  background-size:contain;
+}
+
+
+/*STEPS SHERPED ONMPOARDING*/
+
+.step-menu-parte-2 {
+  transform: translate3d(230px, 80px, 0px) !important;
+}
+
+.step-menu-parte-3{
+  transform: translate3d(230px, 300px, 0px) !important;
+}
+
+#voltar-menu-pricing.step-ativo{
+  color: var(--cor-primaria);
+  border-radius: 10px;
+  border: 2px solid var(--cor-primaria);
+  font-weight: bolder;
+  width: 160px;
+  height:40px;
+  display: flex;
+  align-items:center;
+  margin: 0 auto 5px;
+  padding:0 10px;
+}
+
+
+/** CSS DO BANNER PROMOCIONAL DA INTRANET PRESENTE NO MENU**/
+
+.promotionalStripe {
+  height: 80px;
+  width: 100%;
+}
+
+.promotionalStripeIntranet .body {
+  background: var(--cor-primaria);;
+  height: 60px;
+  padding: 10px;
+  color: white;
+  font-weight: 500;
+  font-size: 13px;
+  margin-left: var(--aside);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.promotionalStripeIntranet > .body > .promotional-intranet-right-side {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin: 0;
+}
+
+.promotionalStripeIntranet > .body > .promotional-intranet-right-side > .link-button {
+  background: #FEB92C;
+  border-radius: 8px;
+  padding: 5px 10px;
+  color: #383838;
+  font-weight: 500;
+  font-family: 'Lexend', sans-serif;
+  min-width: 100px;
+  max-width: 200px;
+  margin-left: 10px;
+  margin-right: 15px;
+  text-align: center;
+}
+
+.promotionalStripeIntranet > .body > .promotional-intranet-right-side > .promotional-intranet-close-button{
+  padding: 6px 7px;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 3px
+}
+
+.promotionalStripeIntranet > .body > .promotional-intranet-right-side > .promotional-intranet-close-button:hover{
+  background-color: #9999;
+}
+
+

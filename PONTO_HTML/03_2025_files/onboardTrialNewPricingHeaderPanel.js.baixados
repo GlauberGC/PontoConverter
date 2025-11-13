@@ -1,0 +1,1070 @@
+$(document).ready(function () {
+  // Commented out to disable old onboarding in favor of the new onboarding system
+  // if (isTrial() && (!viewTour() || getStep())) {
+  //   setTour()
+  //   onBoardingTrial();
+  // }
+});
+
+function onBoardingTrial(){
+
+  try {
+    const elements = getElements();
+    let step = getStep();
+
+    if (!elementsAreValid(elements)) {
+      throw new Error("Um ou mais elementos não foram encontrados.");
+    }
+
+    if (!step) {
+      setStep('step1')
+      step = getStep();
+    }
+
+    if(getStepsDadosCadastrais().includes(step)){
+      createTourDadosCadastrais(elements)
+    }else if(getStepsFiliais().includes(step)){
+      createTourFiliais(elements)
+    }else if(getStepsAdministradores().includes(step)){
+      createTourAdministradores(elements)
+    }else if(getStepsColaboradores().includes(step)){
+      createTourColaboradores(elements)
+    }else if(getStepsEscalaDeTrabalho().includes(step)){
+      createTourEscalaDeTrabalho(elements)
+    }else if(getStepsRegraDePonto().includes(step)){
+      createTourRegrasDePonto(elements)
+    }
+    else {
+      cancelOnBoardingTrial();
+    }
+
+
+  }catch (error) {
+    console.error(error.message);
+  }
+}
+
+function createTourDadosCadastrais(elements){
+
+  let tour = new Shepherd.Tour({
+    useModalOverlay: true,
+    defaultStepOptions: {
+      classes: 'shadow-md bg-purple-dark onboarding-tangerino s-modal',
+      scrollTo: true,
+      cancelIcon: { enabled: true }
+    }
+  });
+
+  tour.addStep({
+    id: 'step1',
+    title: '<div class="title-tour s-title""><span>Boas-vindas ao</span><span>Controle de ponto da Sólides!</span></div>',
+    text: '<div><p>Nosso sistema facilita a gestão de ponto, agilizando o fechamento da folha e otimizando o trabalho da sua equipe de Departamento Pessoal.</p><p>Nesse passo a passo apresentamos nosso sistema e vamos junto com você iniciar sua jornada com a Sólides.</p></div>',
+    classes: 'example-step-extra-class',
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: '<span>Acessar Meu Espaço Sólides</span>',
+        secondary: true,
+        action: function() {
+          window.open('https://meuespacodp.solides.com/', '_blank');
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Próximo <i class="fas fa-arrow-right"></i></span>',
+        action: function() {
+          setStep('step2')
+          tour.next()
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step2',
+    title: '<div class="title-tour s-title"><span>Encontre toda ajuda que precisar no</span><span>Meu Espaço Sólides! 📚</span></div>',
+    text: '<div><p>Antes de começarmos, temos essa dica imperdível! 🌟🌟🌟</p><p>Explore o <strong>Meu Espaço Sólides,</strong> um portal exclusivo dentro da plataforma, onde você encontrará recursos como a Central de ajuda, plantões de onboarding ao vivo, reuniões e muito mais.</p></div>',
+    attachTo: {
+      element: elements.menuEspacoSolides,
+      on: 'right'
+    },
+    classes: 'example-step-extra-class',
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: '<span>Acessar Meu Espaço Sólides</span>',
+        secondary: true,
+        action: function() {
+          window.open('https://meuespacodp.solides.com/', '_blank');
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Próximo <i class="fas fa-arrow-right"></i></span>',
+        action: function() {
+          setStep('step3')
+          elements.dadosCadastrais.click();
+          redirect('pages/dados-cadastrais?funcionalidade=1')
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step3',
+    title: '<div class="title-tour s-title"><span>Primeiro, </span><span>preencha seus dados cadastrais</span></div>',
+    text: '<div><p>Pronto para começar? Vamos iniciar preenchendo seus dados cadastrais!</p><p>💡 Sempre que precisar visualizar seus dados cadastrais vá até <strong>Empregador > Dados Cadastrais.</strong></p></div>',
+    attachTo: {
+      element: elements.dadosCadastrais,
+      on: 'right'
+    },
+    classes: 'example-step-extra-class',
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step2')
+          elements.telaInicial.click();
+          redirect('pages/DashboardPage')
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Preencher dados cadastrais <i class="fas fa-arrow-right"></i></span>',
+        action: function() {
+          setStep('step4')
+          tour.next()
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step4',
+    title: '<div class="title-tour s-title"><span>Confira e complete seus dados</span></div>',
+    text: '<div><p><strong>Complete os campos obrigatórios</strong> e confira as informações inseridas nos demais campos, para garantir os registros corretos no seu sistema de ponto. </p><p>Ao concluir, clique em <strong>Salvar.</strong></p></div>',
+    attachTo: {
+      element: '.corpo',
+      on: 'top-end'
+    },
+    classes: 'example-step-extra-class',
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step3')
+          tour.back()
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Próximo <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step5')
+          elements.filiais.click();
+          redirect('?wicket:bookmarkablePage=:com.frw.tangerino.web.pages.web.cadastro.ListFiliaisPage&funcionalidade=43')
+        }
+      }
+    ]
+  });
+
+  tour.start();
+  if (getStep()) {
+    tour.show(getStep());
+  }
+
+  tour.on('cancel', () => {
+    cancelOnBoardingTrial();
+  });
+
+}
+
+function createTourFiliais(elements) {
+
+  let tour = new Shepherd.Tour({
+    useModalOverlay: true,
+    defaultStepOptions: {
+      classes: 'shadow-md bg-purple-dark onboarding-tangerino s-modal',
+      scrollTo: true,
+      cancelIcon: { enabled: true }
+    }
+  });
+
+  tour.addStep({
+    id: 'step5',
+    title: '<div class="title-tour s-title"><span>Perfeito! Agora vamos Cadastrar suas filiais e ampliar sua gestão</span></div>',
+    text: '<div><p>Caso não tenha filial você pode pular esse passo.</p><p>Para visualizar sobre Filiais acesse <strong>Cadastros Gerais > Filiais.</strong></p></div>',
+    attachTo: {
+      element: elements.filiais,
+      on: 'right'
+    },
+    classes: 'example-step-extra-class',
+    buttons: [
+      {
+        classes: 's-button',
+        text: 'Pular',
+        action: function() {
+          setStep('step8')
+          elements.administradores.click();
+          redirect('?wicket:bookmarkablePage=:com.frw.tangerino.web.pages.web.cadastro.ListAdministradoresPage&funcionalidade=44')
+        },
+        classes: 'pular'
+      },
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step4')
+          elements.dadosCadastrais.click();
+          redirect('pages/dados-cadastrais?funcionalidade=1')
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Cadastrar filiais <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step6')
+          tour.next();
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step6',
+    title: '<div class="title-tour s-title"><span>Aqui você gerência e cadastra suas filiais</span></div>',
+    text: '<div><p>Clique em <strong>Cadastrar</strong>> para ir para a tela de cadastro. </p><p>É nela que vamos inserir os dados necessários para o cadastro de sua filial.</p><p>💡 <strong>Dica:</strong> Sempre que precisar gerenciar suas filiais, elas estarão nesta página: <strong>Cadastros Gerais > Filiais.</strong></p><p>Você pode cadastrar quantas quiser, mesmo com CNPJs diferentes. Lembre-se de vinculá-las aos colaboradores quando for cadastrá-los.</p></div>',
+    attachTo: {
+      element: '.corpo',
+      on: 'top-end'
+    },
+    classes: 'example-step-extra-class',
+    beforeShowPromise: () => {
+      document.querySelector('.conteudo').classList.add('no-click');
+    },
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step5')
+          tour.back()
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Cadastrar <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step7')
+          $("button.sub-incluir").click(),
+          tour.next();
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step7',
+    title: '<div class="title-tour s-title"><span>Complete os dados para cadastrar sua filial</span></div>',
+    text: '<div><p>Agora, <strong>informe os dados da filial,</strong> e ao finalizar o preenchimento, <strong>clique em salvar,</strong> no topo da página, para salvar os dados inseridos. </p></div>',
+    attachTo: {
+      element: '.corpo',
+      on: 'top-end'
+    },
+    classes: 'example-step-extra-class',
+    beforeShowPromise: () => {
+      return new Promise((resolve) => {
+        const checkElement = () => {
+          try {
+            document.querySelector('.conteudo').classList.remove('no-click');
+            document.querySelector('.botaoVoltar').classList.add('no-click');
+            document.querySelector('.botaoNovo').classList.add('no-click');
+            resolve();
+          }catch (e) {
+            setTimeout(checkElement, 500);
+          }
+
+        };
+
+        checkElement();
+      });
+
+    },
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step6')
+          elements.filiais.click();
+          redirect('?wicket:bookmarkablePage=:com.frw.tangerino.web.pages.web.cadastro.ListFiliaisPage&funcionalidade=43')
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Próximo <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step8')
+          elements.administradores.click();
+          redirect('?wicket:bookmarkablePage=:com.frw.tangerino.web.pages.web.cadastro.ListAdministradoresPage&funcionalidade=44')
+        }
+      }
+    ]
+  });
+
+  tour.start();
+  if (getStep()) {
+    tour.show(getStep());
+  }
+
+  tour.on('cancel', () => {
+    cancelOnBoardingTrial();
+  });
+
+}
+
+function createTourAdministradores(elements){
+
+  let tour = new Shepherd.Tour({
+    useModalOverlay: true,
+    defaultStepOptions: {
+      classes: 'shadow-md bg-purple-dark onboarding-tangerino s-modal',
+      scrollTo: false,
+      cancelIcon: { enabled: true }
+    }
+  });
+
+  tour.addStep({
+    id: 'step8',
+    title: '<div class="title-tour s-title"><span>Excelente! Agora vamos adicionar administradores e garantir uma boa gestão da plataforma</span></div>',
+    text: '<div><p>No dia a dia do DP, diversas pessoas da equipe podem precisar de acesso ao sistema. Para facilitar a gestão, cadastre administradores e distribua o acesso à plataforma. </p><p>Você pode fazer isso, pelo no menu lateral <strong>Cadastros gerais > Administradores</strong></p><p>💡 <strong>Dica:</strong>  Use o cadastro de gestores caso queira limitar funções específicas.</p></div>',
+    attachTo: {
+      element: elements.administradores,
+      on: 'right'
+    },
+    classes: 'example-step-extra-class',
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step6')
+          elements.filiais.click();
+          redirect('?wicket:bookmarkablePage=:com.frw.tangerino.web.pages.web.cadastro.ListFiliaisPage&funcionalidade=43')
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Adicionar administradores <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step9')
+          tour.next()
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step9',
+    title: '<div class="title-tour s-title"><span>Aqui você gerencia e cadastra os administradores</span></div>',
+    text: '<div><p>Clique em <strong>Cadastrar</strong> para ir para a tela de cadastro. </p><p>É nela que vamos inserir os dados necessários para adicionar um administrador.</p><p>💡 <strong>Dica:</strong> Para excluir um administrador, clique no ícone ✖ na lista, que corresponda ao administrador que deseja excluir.</p></div>',
+    attachTo: {
+      element: '.corpo',
+      on: 'top-end'
+    },
+    classes: 'example-step-extra-class',
+    beforeShowPromise: () => {
+
+      document.querySelector('.corpo').classList.add('no-click');
+      const element = document.querySelector('.corpo');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+    },
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step8')
+          tour.back()
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Cadastrar <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step10')
+          $("button.sub-incluir").click(),
+            tour.next();
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step10',
+    title: '<div class="title-tour s-title"><span>Complete os dados para</span><span>cadastrar um administrador</span></div>',
+    text: '<div><p>Insira os dados solicitados e clique em <strong>Salvar,</strong>  para adicionar um novo administrador.</p></div>',
+    attachTo: {
+      element: '.corpo',
+      on: 'top-end'
+    },
+    classes: 'example-step-extra-class',
+    beforeShowPromise: () => {
+      return new Promise((resolve) => {
+        const checkElement = () => {
+          try {
+            document.querySelector('.corpo').classList.remove('no-click');
+            document.querySelector('.botaoVoltar').classList.add('no-click');
+            document.querySelector('.botaoNovo').classList.add('no-click');
+            resolve();
+          }catch (e) {
+            setTimeout(checkElement, 500);
+          }
+
+        };
+
+        checkElement();
+      });
+    },
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step9')
+          elements.administradores.click();
+          redirect('?wicket:bookmarkablePage=:com.frw.tangerino.web.pages.web.cadastro.ListAdministradoresPage&funcionalidade=44')
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Próximo <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step11')
+          elements.telaInicial.click();
+          redirect('pages/DashboardPage')
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step11',
+    title: '<div class="title-tour s-title"><span>Precisa de ajuda? 🙌 </span><span>Estamos sempre aqui para te auxiliar!</span></div>',
+    text: '<div><p>Saiba que a qualquer momento se você tiver dificuldade, é só clicar no chat para solicitar auxílio do time de suporte.</p></div>',
+    attachTo: {
+      element: '.iconChat',
+      on: 'left'
+    },
+    classes: 'example-step-extra-class',
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step9')
+          elements.administradores.click();
+          redirect('?wicket:bookmarkablePage=:com.frw.tangerino.web.pages.web.cadastro.ListAdministradoresPage&funcionalidade=44')
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Próximo <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step12')
+          elements.colaboradores.click();
+          redirect('pages/colaboradores?funcionalidade=3')
+        }
+      }
+    ]
+  });
+
+  tour.start();
+  if (getStep()) {
+    tour.show(getStep());
+  }
+
+  tour.on('cancel', () => {
+    cancelOnBoardingTrial();
+  });
+
+ }
+
+function createTourColaboradores(elements){
+
+  let tour = new Shepherd.Tour({
+    useModalOverlay: true,
+    defaultStepOptions: {
+      classes: 'shadow-md bg-purple-dark onboarding-tangerino s-modal',
+      scrollTo: {
+        behavior: 'smooth',
+        block: 'end'
+      },
+      cancelIcon: { enabled: true }
+    }
+  });
+
+  tour.addStep({
+    id: 'step12',
+    title: '<div class="title-tour s-title"><span>Agora vamos adicionar os colaboradores ao sistema!</span></div>',
+    text: '<div><p>Adicione seus colaboradores para iniciar o controle de ponto. Temos a opção de <strong>cadastro em massa com planilha ou individual.</strong></p><p>Você pode fazer isso, pelo no menu lateral <strong>Cadastros gerais > Administradores</strong></p><p>Vamos te ensinar a cadastrar seus colaboradores individualmente. Para cadastros em massa <a href="https://ajuda.solides.com.br/hc/pt-br/articles/28111230485005-Como-cadastrar-e-editar-colaboradores-no-S%C3%B3lides-DP#h_01J1WGA9B2ZRW2FKS8J8YA9DGS" target="_blank">acesse nosso tutorial.</a></p></div>',
+    attachTo: {
+      element: elements.colaboradores,
+      on: 'right'
+    },
+    classes: 'example-step-extra-class',
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step11')
+          elements.telaInicial.click();
+          redirect('pages/DashboardPage')
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Próximo <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step13')
+          tour.next()
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step13',
+    title: '<div class="title-tour s-title"><span>Aqui você gerencia e</span><span>cadastra seus colaboradores</span></div>',
+    text: '<div><p>Clique em <strong>Cadastrar</strong> para ir para a tela de cadastro. </p><p>É nela que vamos inserir os dados necessários para adicionar um colaborador.</p><p>💡 <strong>Dica:</strong> Sempre que precisar gerenciar seus colaboradores, eles estarão nesta página: <strong>Cadastros Gerais > Colaboradores.</strong></p></div>',
+    attachTo: {
+      element: '.corpo',
+      on: 'top-end'
+    },
+    classes: 'example-step-extra-class',
+    beforeShowPromise: () => {
+      document.querySelector('.corpo').classList.add('no-click');
+    },
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step12')
+          elements.colaboradores.click();
+          redirect('pages/colaboradores?funcionalidade=3')
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Cadastrar <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step14')
+          $("button.sub-incluir").click()
+          tour.next();
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step14',
+    title: '<div class="title-tour s-title"><span>Cadastre um colaborador</span><span>individualmente</span></div>',
+    text: '<div><p>Agora, <strong>informe os dados do colaborador.</strong> Os campos que contém o *, são campos de preenchimento obrigatório.</p><p>Ao terminar o preenchimento, <strong>clique em salvar</strong> para  finalizar o cadastro desse colaborador.</p></div>',
+    attachTo: {
+      element: '.corpo',
+      on: 'top-end'
+    },
+    classes: 'example-step-extra-class',
+    beforeShowPromise: () => {
+      return new Promise((resolve) => {
+        const checkElement = () => {
+          try {
+            document.querySelector('.corpo').classList.remove('no-click');
+            document.querySelector('.botaoVoltar').classList.add('no-click');
+            document.querySelector('.botaoNovo').classList.add('no-click');
+            resolve();
+          }catch (e) {
+            setTimeout(checkElement, 500);
+          }
+
+        };
+
+        checkElement();
+      });
+    },
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step13')
+          elements.colaboradores.click();
+          redirect('pages/colaboradores?funcionalidade=3')
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Próximo <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step15')
+          elements.colaboradores.click();
+          redirect('pages/colaboradores?funcionalidade=3')
+        }
+      }
+    ]
+  });
+
+  tour.start();
+  if (getStep()) {
+    tour.show(getStep());
+  }
+
+  tour.on('cancel', () => {
+    cancelOnBoardingTrial();
+  });
+}
+
+function createTourEscalaDeTrabalho(elements){
+
+  let tour = new Shepherd.Tour({
+    useModalOverlay: true,
+    defaultStepOptions: {
+      classes: 'shadow-md bg-purple-dark onboarding-tangerino s-modal',
+      scrollTo: true,
+      cancelIcon: { enabled: true }
+    }
+  });
+
+  tour.addStep({
+    id: 'step15',
+    title: '<div class="title-tour s-title"><span>Muito bom! Agora, vamos vincular esse colaborador à uma escala de trabalho</span></div>',
+    text: '<div><p>Você pode vincular a escala de <strong>forma individual ou em massa.</strong> Para vincular <strong>individualmente,</strong> clique no ícone <i class="fa-solid fa-pen"></i> para editar a escala do colaborador. </p></div>',
+    attachTo: {
+      element: '.editar',
+      on: 'right'
+    },
+    classes: 'example-step-extra-class',
+    beforeShowPromise: () => {
+      document.querySelector('.corpo').classList.add('no-click');
+    },
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step13')
+          elements.colaboradores.click();
+          redirect('pages/colaboradores?funcionalidade=3')
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Editar escala<i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step16')
+          document.getElementsByClassName('editar')[0].click();
+          tour.next()
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step16',
+    title: '<div class="title-tour s-title"><span>Vincular escala ao colaborador</span></div>',
+    text: '<div><p>Na <strong>seção Escala,</strong> escolha qual escala e <strong>clique em adicionar</strong> para visualizar essa escala. </p><p>Tudo certo? <strong>Clique em Salvar</strong> para aplicar a vinculação do colaborador à essa escala.</p><p>💡 <strong>Dica:</strong> Para instruções detalhadas sobre escalas, como  criar uma nova, vincular em massa, etc, <a href="https://ajuda.solides.com.br/hc/pt-br/articles/25356571432205-Como-criar-escalas-de-trabalho-para-meus-colaboradores" target="_blank">consulte nosso tutorial.</a></p></div>',
+    attachTo: {
+      element: '.espaco-destaque',
+      on: 'top-end'
+    },
+    classes: 'example-step-extra-class',
+    beforeShowPromise: () => {
+      return new Promise((resolve) => {
+        const checkElement = () => {
+          try {
+            document.querySelector('.corpo').classList.remove('no-click');
+
+            const escala = document.querySelector("li.tab1");
+            escala.childNodes[1].click();
+
+            resolve();
+          }catch (e) {
+            setTimeout(checkElement, 500);
+          }
+        };
+
+        checkElement();
+      });
+    },
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step15')
+          elements.colaboradores.click();
+          redirect('pages/colaboradores?funcionalidade=3')
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Configurar Regras de Ponto<i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step17')
+          elements.regrasDePonto.click();
+          redirect('pages/regras-ponto?funcionalidade=79')
+        }
+      }
+    ]
+  });
+
+
+  tour.start();
+  if (getStep()) {
+    tour.show(getStep());
+  }
+
+  tour.on('cancel', () => {
+    cancelOnBoardingTrial();
+  });
+}
+
+function createTourRegrasDePonto(elements) {
+
+  let tour = new Shepherd.Tour({
+    useModalOverlay: true,
+    defaultStepOptions: {
+      classes: 'shadow-md bg-purple-dark onboarding-tangerino s-modal',
+      scrollTo: false,
+      cancelIcon: { enabled: true }
+    }
+  });
+
+  tour.addStep({
+    id: 'step17',
+    title: '<div class="title-tour s-title"><span>E por último: vamos configurar as Regras de Ponto?</span></div>',
+    text: '<div><p>Essa etapa é crucial para que o sistema registre corretamente as horas trabalhadas, horas extras e horários noturnos.  <strong>Assegure-se de que todas as regras estejam alinhadas às diretrizes da empresa.</strong></p><p>Pronto para começar? Acesse em <strong>Ponto > Configurações > Regras de ponto</strong> no menu principal. </p></div>',
+    attachTo: {
+      element: elements.regrasDePonto,
+      on: 'right'
+    },
+    classes: 'example-step-extra-class',
+    beforeShowPromise: () => {
+      return new Promise((resolve) => {
+        const checkElement = () => {
+          try {
+            elements.regrasDePonto.scrollIntoView({ behavior: 'smooth' });
+            resolve();
+          }catch (e) {
+            setTimeout(checkElement, 500);
+          }
+        };
+
+        checkElement();
+      });
+    },
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step15')
+          elements.colaboradores.click();
+          redirect('pages/colaboradores?funcionalidade=3')
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Próximo<i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step18');
+          tour.next()
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step18',
+    title: '<div class="title-tour s-title"><span>Aqui você gerencia, cadastra e edita suas Regras de Ponto</span></div>',
+    text: '<div><p>Clique em <strong><i class="fa-solid fa-pen"></i> Editar</strong> para ir para a tela de edição da regra de ponto. </p><p>É nela que vamos inserir os dados necessários para modificar uma regra de ponto, de acordo com as diretrizes de sua empresa.</p></div>',
+    attachTo: {
+      element: '.corpo',
+      on: 'top-end'
+    },
+    classes: 'example-step-extra-class',
+    beforeShowPromise: () => {
+      document.querySelector('.corpo').classList.add('no-click');
+
+    },
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step17')
+          tour.back();
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next"><i class="fa-solid fa-pen"></i> Editar <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step19')
+          document.getElementsByClassName('editar')[0].click();
+            tour.next();
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step19',
+    title: '<div class="title-tour s-title"><span>Edite os dados para personalizar a Regra de Ponto </span></div>',
+    text: '<div><p>Insira ou edite os dados solicitados para personalizar a regra de ponto <strong>conforme a política da sua empresa.</strong></p><p>Lembre de definir a data de fechamento da folha para concluir a configuração! Salve sua nova regra, clicando em <strong>Salvar Regras Gerais.</strong></p></div>',
+    attachTo: {
+      element: '.corpo',
+      on: 'top-end'
+    },
+    classes: 'example-step-extra-class',
+    beforeShowPromise: () => {
+      return new Promise((resolve) => {
+        const checkElement = () => {
+          try {
+            document.querySelector('.corpo').classList.remove('no-click');
+            const element = document.querySelector('.btn-ativa-conta');
+            element.scrollIntoView({ behavior: 'smooth' });
+            resolve();
+          }catch (e) {
+            setTimeout(checkElement, 500);
+          }
+        };
+
+        checkElement();
+      });
+    },
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          setStep('step18');
+          elements.regrasDePonto.click();
+          redirect('pages/regras-ponto?funcionalidade=79')
+        }
+      },
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Próximo <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step20')
+          tour.next();
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step20',
+    title: '<div class="title-tour s-title"><span>Ótimo! Agora que a regra está em conformidade com sua empresa, vamos configurar os detalhes!</span></div>',
+    text: '<div><p>Nessas abas, você pode <strong>configurar/editar Horas Extras, Banco de Horas e Colaboradores</strong> dessa regra de Ponto!</p><p>Preencha as abas conforme o tipo de controle de ponto da sua empresa.</p></div>',
+    attachTo: {
+      element: '.aba',
+      on: 'right'
+    },
+    classes: 'example-step-extra-class',
+    beforeShowPromise: () => {
+      return new Promise((resolve) => {
+        const checkElement = () => {
+          try {
+            document.querySelector('.aba').classList.remove('no-click');
+            const element = document.querySelector('.aba');
+            element.scrollIntoView({ behavior: 'smooth' });
+            resolve();
+          }catch (e) {
+            setTimeout(checkElement, 500);
+          }
+        };
+
+        checkElement();
+      });
+    },
+    buttons: [
+      {
+        classes: 's-button btn-tour-voltar',
+        text: 'Voltar',
+        secondary: true,
+        action: function() {
+          document.querySelector('.aba').classList.remove('no-click');
+          setStep('step19');
+          tour.back();
+        }
+      },
+      {
+        text: '<span class="btn-next">Próximo <i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          setStep('step21')
+          elements.telaInicial.click();
+          redirect('pages/DashboardPage')
+        }
+      }
+    ]
+  });
+
+  tour.addStep({
+    id: 'step21',
+    title: '<div class="title-tour s-title"><span>Parabéns! Você configurou as Regras de Ponto no sistema 🎉🎉🎉</span></div>',
+    text: '<div><p>Você deu um grande um passo para uma gestão eficiente de pessoas!</p><p><a href="https://app.tangerino.com.br/Tangerino/pages/marketplace" target="_blank">Acesse nosso Marketplace</a> e descubra todas as soluções do sistema para deixar seu DP em dia com a lei, sem burocracias e cada vez mais produtivo.</p></div>',
+    attachTo: {
+      element: '',
+      on: 'left'
+    },
+    classes: 'example-step-extra-class',
+    buttons: [
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">Finalizar e ir para Central de Ajuda<i class="fas fa-arrow-right"></i></span>',
+        action: function () {
+          window.open('https://ajuda.solides.com.br/hc/pt-br/categories/27254471571469', '_blank');
+          localStorage.removeItem('tourStep');
+          tour.next()
+          cancelOnBoardingTrial()
+        }
+      }
+    ]
+  });
+
+  tour.start();
+  if (getStep()) {
+    tour.show(getStep());
+  }
+
+  tour.on('cancel', () => {
+    cancelOnBoardingTrial();
+  });
+
+}
+
+function getElements() {
+  return {
+    menuEspacoSolides: $("span.menu12").parent().get(0),
+    menuEmpregadores: $("span.menu3").parent().get(0),
+    menuCadastrosGerais: $("span.menu4").parent().get(0),
+    telaInicial: $("span.menu2").parent().get(0),
+    dadosCadastrais: $("span.elemento-menu-nome-27").parent().get(0),
+    filiais: $("span.elemento-menu-nome-28").parent().get(0),
+    administradores: $("span.elemento-menu-nome-30").parent().get(0),
+    colaboradores: $("span.elemento-menu-nome-45").parent().get(0),
+    regrasDePonto: $("span.elemento-menu-nome-61").parent().get(0)
+  };
+}
+
+function elementsAreValid(elements) {
+  return Object.values(elements).every(element => element !== undefined);
+}
+
+function setTour(){
+  localStorage.setItem('tutorial_trial', 'true');
+}
+
+function viewTour(){
+  return  localStorage.getItem('tutorial_trial')
+}
+
+function isTrial(){
+  let isTrial = $('.hiddenIsTrial').val();
+  return isTrial === 'true';
+}
+
+function getStep(){
+  return localStorage.getItem('tourStep');
+}
+
+function setStep(step) {
+  localStorage.setItem('tourStep', step);
+}
+
+function getStepsDadosCadastrais(){
+  return ['step1', 'step2', 'step3', 'step4']
+}
+
+function getStepsFiliais(){
+  return ['step5', 'step6', 'step7']
+}
+
+function getStepsAdministradores(){
+  return ['step8', 'step9', 'step10', 'step11']
+}
+
+function getStepsColaboradores(){
+  return ['step12', 'step13', 'step14'];
+}
+
+function getStepsEscalaDeTrabalho(){
+  return ['step15', 'step16'];
+}
+
+function getStepsRegraDePonto(){
+  return [ 'step17', 'step18', 'step19', 'step20', 'step21'];
+}
+
+function cancelOnBoardingTrial(){
+  localStorage.removeItem('tourStep');
+
+  $("a.avatar").get(0).click();
+
+  let tour = new Shepherd.Tour({
+    useModalOverlay: true,
+    defaultStepOptions: {
+      classes: 'shadow-md bg-purple-dark onboarding-tangerino s-modal',
+      scrollTo: true,
+    }
+  });
+
+  tour.addStep({
+    id: '1',
+    title: '<div class="title-tour s-title"><span>Reveja este tutorial quando quiser!</span></div>',
+    text: '<div><p>Quer voltar para esse tutorial outra vez?</p> <p>Clique na opção <strong>“Iniciar tutorial”</strong> e recomece.</p></div>',
+    attachTo: {
+      element: '.onboardingTrial',
+      on: 'left'
+    },
+    classes: 'example-step-extra-class',
+    buttons: [
+      {
+        classes: 's-button',
+        text: '<span class="btn-next">OK</span>',
+        action: function () {
+          localStorage.removeItem('tourStep');
+          $("span.menu2").parent().get(0).click();
+          redirect('pages/DashboardPage')
+        }
+      }
+    ]
+  });
+
+  tour.start();
+}

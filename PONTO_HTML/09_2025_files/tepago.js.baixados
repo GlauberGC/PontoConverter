@@ -1,0 +1,50 @@
+var tabela = document.getElementById('corpo') != null ? document.getElementById('corpo').getElementsByTagName('table') : 0;
+for (var i = 0; i < tabela.length; i++) {
+    if (tabela[i].className === 't1') {
+        var linha = tabela[i].getElementsByTagName('tr');
+        for (var j = 1; j < linha.length; j++) {
+            if (j % 2) {
+                linha[j].className = 'par';
+            }
+            else {
+            }
+        }
+    }
+}
+
+function check() {
+    var a = document.nomeForm.elements;
+    for (i = 0; i < a.length; i++) {
+        if (a[i].type === "checkbox" && a[i].checked) {
+            a[i].parentNode.parentNode.className = 'check';
+        }
+        else if (a[i].type === "checkbox") {
+            if (i % 2) {
+                a[i].parentNode.parentNode.className = '';
+            }
+            else {
+                a[i].parentNode.parentNode.className = 'par';
+            }
+        }
+        else {
+        }
+    }
+}
+
+function checkDeposito(tipoDeposito) {
+    $("#coluna2 .check").removeClass("check");
+    $(tipoDeposito).addClass("check");
+}
+
+function filtro(a) {
+    var b = document.getElementById('filtro');
+    if (a.className === 'filtro') {
+        a.className = 'filtro ativo';
+        b.style.display = 'block';
+    }
+    else {
+        a.className = 'filtro';
+        b.style.display = 'none';
+    }
+}
+
