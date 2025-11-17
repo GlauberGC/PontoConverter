@@ -24,9 +24,11 @@ def main():
     atestados = carregar_lista_txt(data_dir, ARQ_ATESTADO)
     aniversarios = carregar_lista_txt(data_dir, ARQ_ANIVERSARIO)
 
-    html_files = sorted(pasta_html.glob("*.html"))
+    html_files = sorted(pasta_html.glob("*.html")) + sorted(pasta_html.glob("*.htm"))
+    html_files = sorted(dict.fromkeys(html_files), key=lambda p: p.name)
+
     if not html_files:
-        print(f"Nenhum HTML encontrado em: {pasta_html}")
+        print(f"Nenhum HTML/HTM encontrado em: {pasta_html}")
         return
 
     resultados = []
@@ -43,7 +45,7 @@ def main():
             "resumo": {
                 "Total Trabalhado": resumo["total_trabalhado"],
                 "Total Previsto": resumo["total_previsto"],
-                "Diferença": resumo["diferenca"],
+                "Saldo do dia": resumo["saldo_dia"],
             },
         })
 

@@ -3,7 +3,7 @@ import pandas as pd
 from xlsxwriter.utility import xl_col_to_name
 from src.excel.estilos import criar_estilos
 
-def _aplicar_condicional_diferenca(ws, df, estilos, coluna_nome="Diferença"):
+def _aplicar_condicional_diferenca(ws, df, estilos, coluna_nome="Saldo do dia"):
     try:
         col_idx = df.columns.get_loc(coluna_nome)
         letra = xl_col_to_name(col_idx)
@@ -40,7 +40,7 @@ def gerar_arquivo_excel(caminho_saida: Path,
         for col in range(len(df_consolidado.columns)):
             ws_cons.set_column(col, col, 18)
 
-        _aplicar_condicional_diferenca(ws_cons, df_consolidado, estilos)
+        _aplicar_condicional_diferenca(ws_cons, df_consolidado, estilos, coluna_nome="Saldo do dia")
 
         # Destaca TOTAL GERAL (linha inteira)
         for idx, row in df_consolidado.iterrows():
@@ -59,7 +59,7 @@ def gerar_arquivo_excel(caminho_saida: Path,
             for col in range(len(df_mes.columns)):
                 ws.set_column(col, col, 18)
 
-            _aplicar_condicional_diferenca(ws, df_mes, estilos)
+            _aplicar_condicional_diferenca(ws, df_mes, estilos, coluna_nome="Saldo do dia")
 
             # Pintar linhas até a última coluna de dados (A:E)
             for idx, row in df_mes.iterrows():
@@ -68,7 +68,7 @@ def gerar_arquivo_excel(caminho_saida: Path,
                 data_str = row["Data"]
 
                 if data_str == "TOTAL MÊS":
-                    for col in range(5):  # A:E
+                    for col in range(6):  # A:F
                         ws.write(excel_row, col, df_mes.iloc[idx, col], estilos["total"])
                     continue
 
@@ -80,10 +80,12 @@ def gerar_arquivo_excel(caminho_saida: Path,
                     fmt = estilos["aniversario"]
                 elif tipo == "Feriado":
                     fmt = estilos["feriado"]
+                elif tipo == "Final de Semana":
+                    fmt = estilos["fds"]
                 else:
                     continue  # dia normal, não colore
 
-                for col in range(5):  # A:E
+                for col in range(6):  # A:F
                     ws.write(excel_row, col, df_mes.iloc[idx, col], fmt)
 
     print("Excel gerado com sucesso!")

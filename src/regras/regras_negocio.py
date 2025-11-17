@@ -1,13 +1,26 @@
 import calendar
 from datetime import date, timedelta, datetime
 from pathlib import Path
+
 import pandas as pd
+
 from src.parser.html_parser import extrair_horas_por_dia, obter_mes_ano
 from src.regras.calendario import feriados_ano
 from src.utils.time_utils import parse_time, format_timedelta
 
+# Configurações gerais
 CARGA_DIARIA_PADRAO = "08:00"
 CARGA_ANIVERSARIO = timedelta(hours=4)
+
+dias_semana = {
+    0: "Segunda",
+    1: "Terça",
+    2: "Quarta",
+    3: "Quinta",
+    4: "Sexta",
+    5: "Sábado",
+    6: "Domingo",
+}
 
 def gerar_nome_aba(mes: int, ano: int) -> str:
     mapa = {
@@ -20,6 +33,7 @@ def gerar_nome_aba(mes: int, ano: int) -> str:
     for ch in invalid:
         nome = nome.replace(ch, ' ')
     return nome[:31]
+
 
 def processar_mes(html_file: Path,
                   ferias: set[date],
@@ -38,18 +52,18 @@ def processar_mes(html_file: Path,
     _, ultimo_dia = calendar.monthrange(ano, mes)
     dias_processar = []
 
+    # Agora inclui TODOS os dias úteis e finais de semana
     for dia in range(1, ultimo_dia + 1):
         d = date(ano, mes, dia)
 
-        if d.weekday() >= 5:  # fim de semana
-            continue
-
+        # Se tiver registro, ou feriado, ou ferias, ou atestado, ou aniversário, ou for final de semana
         if (
             d in horas_por_dia
             or d in feriados_mes
             or d in atestados
             or d in ferias
             or d in aniversarios
+            or d.weekday() >= 5  # inclui sábado e domingo
         ):
             dias_processar.append(d)
 
@@ -60,7 +74,7 @@ def processar_mes(html_file: Path,
 
     total_trab = timedelta()
     total_prev = timedelta()
-    total_diff = timedelta()
+    total_saldo = timedelta()
 
     for d in dias_processar:
         registros = horas_por_dia.get(d, [])
@@ -70,52 +84,146 @@ def processar_mes(html_file: Path,
         eh_atestado = d in atestados
         eh_ferias = d in ferias
         eh_aniversario = d in aniversarios
+        eh_fds = d.weekday() >= 5  # sábado = 5, domingo = 6
 
+        # ============================
+        # 1) FÉRIAS
+        # ============================
         if eh_ferias:
             tipo = "Férias"
             carga_prevista = timedelta(0)
             total_horas = timedelta(0)
+            saldo = timedelta(0)
 
-        elif eh_feriado:
+            linhas.append({
+                "Data": d.strftime("%d/%m/%Y"),
+                "Dia da Semana": dias_semana[d.weekday()],
+                "Tipo do Dia": tipo,
+                "Total Trabalhado": format_timedelta(total_horas),
+                "Carga Prevista": "00:00",
+                "Saldo do dia": "00:00",
+            })
+            continue
+
+        # ============================
+        # 2) FERIADO
+        # ============================
+        if eh_feriado:
             tipo = "Feriado"
             carga_prevista = timedelta(0)
+            saldo = total_horas  # se trabalhou → saldo positivo
 
-        elif eh_atestado:
-            tipo = "Atestado"
-            carga_prevista = carga_diaria
-            total_horas = carga_diaria
-
-        elif eh_aniversario:
-            tipo = "Aniversário"
-            carga_prevista = CARGA_ANIVERSARIO
-
-        else:
-            tipo = "Normal"
-            carga_prevista = carga_diaria
-
-        diff = total_horas - carga_prevista
-
-        # Férias não entram nos totais
-        if tipo != "Férias":
             total_trab += total_horas
             total_prev += carga_prevista
-            total_diff += diff
+            total_saldo += saldo
+
+            linhas.append({
+                "Data": d.strftime("%d/%m/%Y"),
+                "Dia da Semana": dias_semana[d.weekday()],
+                "Tipo do Dia": tipo,
+                "Total Trabalhado": format_timedelta(total_horas),
+                "Carga Prevista": "00:00",
+                "Saldo do dia": format_timedelta(saldo),
+            })
+            continue
+
+        # ============================
+        # 3) ATESTADO (saldo sempre zero)
+        # ============================
+        if eh_atestado:
+            tipo = "Atestado"
+            carga_prevista = carga_diaria
+            horas_exibidas = total_horas  # mostra horas reais
+            saldo = timedelta(0)
+
+            total_trab += horas_exibidas
+            total_prev += carga_prevista
+            total_saldo += saldo
+
+            linhas.append({
+                "Data": d.strftime("%d/%m/%Y"),
+                "Dia da Semana": dias_semana[d.weekday()],
+                "Tipo do Dia": tipo,
+                "Total Trabalhado": format_timedelta(horas_exibidas),
+                "Carga Prevista": format_timedelta(carga_prevista),
+                "Saldo do dia": "00:00",
+            })
+            continue
+
+        # ============================
+        # 4) ANIVERSÁRIO
+        # ============================
+        if eh_aniversario:
+            tipo = "Aniversário"
+            carga_prevista = CARGA_ANIVERSARIO
+            saldo = total_horas - carga_prevista
+
+            total_trab += total_horas
+            total_prev += carga_prevista
+            total_saldo += saldo
+
+            linhas.append({
+                "Data": d.strftime("%d/%m/%Y"),
+                "Dia da Semana": dias_semana[d.weekday()],
+                "Tipo do Dia": tipo,
+                "Total Trabalhado": format_timedelta(total_horas),
+                "Carga Prevista": format_timedelta(carga_prevista),
+                "Saldo do dia": format_timedelta(saldo),
+            })
+            continue
+
+        # ============================
+        # 5) FINAL DE SEMANA
+        # ============================
+        if eh_fds:
+            tipo = "Final de Semana"
+            carga_prevista = timedelta(0)
+            saldo = total_horas  # se trabalhou, vira positivo
+
+            total_trab += total_horas
+            total_prev += carga_prevista
+            total_saldo += saldo
+
+            linhas.append({
+                "Data": d.strftime("%d/%m/%Y"),
+                "Dia da Semana": dias_semana[d.weekday()],
+                "Tipo do Dia": tipo,
+                "Total Trabalhado": format_timedelta(total_horas),
+                "Carga Prevista": "00:00",
+                "Saldo do dia": format_timedelta(saldo),
+            })
+            continue
+
+        # ============================
+        # 6) DIA NORMAL (útil)
+        # ============================
+        tipo = "Normal"
+        carga_prevista = carga_diaria
+        saldo = total_horas - carga_prevista
+
+        total_trab += total_horas
+        total_prev += carga_prevista
+        total_saldo += saldo
 
         linhas.append({
             "Data": d.strftime("%d/%m/%Y"),
+            "Dia da Semana": dias_semana[d.weekday()],
             "Tipo do Dia": tipo,
             "Total Trabalhado": format_timedelta(total_horas),
             "Carga Prevista": format_timedelta(carga_prevista),
-            "Diferença": format_timedelta(diff),
+            "Saldo do dia": format_timedelta(saldo),
         })
 
-    # Linha TOTAL MÊS
+    # ============================
+    # LINHA TOTAL DO MÊS
+    # ============================
     linhas.append({
         "Data": "TOTAL MÊS",
+        "Dia da Semana": "",
         "Tipo do Dia": "",
         "Total Trabalhado": format_timedelta(total_trab),
         "Carga Prevista": format_timedelta(total_prev),
-        "Diferença": format_timedelta(total_diff),
+        "Saldo do dia": format_timedelta(total_saldo),
     })
 
     df_mes = pd.DataFrame(linhas)
@@ -125,7 +233,7 @@ def processar_mes(html_file: Path,
         "nome_aba": nome_aba,
         "total_trabalhado": total_trab,
         "total_previsto": total_prev,
-        "diferenca": total_diff,
+        "saldo_dia": total_saldo,
     }
 
     return df_mes, resumo

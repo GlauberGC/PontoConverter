@@ -12,9 +12,11 @@ def criar_estilos(workbook):
     })
 
     estilos["ferias"] = workbook.add_format({"bg_color": "#DDEBF7"})
-    estilos["atestado"] = workbook.add_format({"bg_color": "#FFF2CC"})
-    estilos["aniversario"] = workbook.add_format({"bg_color": "#E2EFDA"})
+    estilos["atestado"] = workbook.add_format({"bg_color": "#FFE699"})
+    estilos["aniversario"] = workbook.add_format({"bg_color": "#F8BE8E"})
     estilos["feriado"] = workbook.add_format({"bg_color": "#F6E2F7"})
+    estilos["fds"] = workbook.add_format({"bg_color": "#FFF2CC"}) 
+
 
     estilos["verde"] = workbook.add_format({"font_color": "green"})
     estilos["vermelho"] = workbook.add_format({"font_color": "red"})
