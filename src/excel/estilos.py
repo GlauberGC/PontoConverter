@@ -16,6 +16,8 @@ def criar_estilos(workbook):
     estilos["aniversario"] = workbook.add_format({"bg_color": "#F8BE8E"})
     estilos["feriado"] = workbook.add_format({"bg_color": "#F6E2F7"})
     estilos["fds"] = workbook.add_format({"bg_color": "#FFF2CC"}) 
+    estilos["abono"] = workbook.add_format({"bg_color": "#C9DAF8"})  # azul claro
+
 
 
     estilos["verde"] = workbook.add_format({"font_color": "green"})

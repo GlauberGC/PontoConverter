@@ -80,6 +80,8 @@ def gerar_arquivo_excel(caminho_saida: Path,
                     fmt = estilos["aniversario"]
                 elif tipo == "Feriado":
                     fmt = estilos["feriado"]
+                elif tipo == "Abono":
+                    fmt = estilos["abono"]
                 elif tipo == "Final de Semana":
                     fmt = estilos["fds"]
                 else:
@@ -87,5 +89,9 @@ def gerar_arquivo_excel(caminho_saida: Path,
 
                 for col in range(6):  # A:F
                     ws.write(excel_row, col, df_mes.iloc[idx, col], fmt)
+
+                for col in range(len(df_mes.columns)):
+                    ws.set_column(col, col, 18)
+
 
     print("Excel gerado com sucesso!")

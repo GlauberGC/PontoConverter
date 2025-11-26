@@ -10,6 +10,7 @@ PASTA_EXCEL = "PONTO_EXCEL"
 ARQ_FERIAS = "ferias.txt"
 ARQ_ATESTADO = "atestado.txt"
 ARQ_ANIVERSARIO = "aniversario.txt"
+ARQ_ABONO = "abono.txt"
 
 def main():
     base_dir = Path(__file__).resolve().parent
@@ -23,6 +24,8 @@ def main():
     ferias = carregar_lista_txt(data_dir, ARQ_FERIAS)
     atestados = carregar_lista_txt(data_dir, ARQ_ATESTADO)
     aniversarios = carregar_lista_txt(data_dir, ARQ_ANIVERSARIO)
+    abonos = carregar_lista_txt(data_dir, ARQ_ABONO)
+
 
     html_files = sorted(pasta_html.glob("*.html")) + sorted(pasta_html.glob("*.htm"))
     html_files = sorted(dict.fromkeys(html_files), key=lambda p: p.name)
@@ -35,7 +38,7 @@ def main():
 
     for html_file in html_files:
         print(f"📄 Processando: {html_file.name}")
-        df_mes, resumo = processar_mes(html_file, ferias, atestados, aniversarios)
+        df_mes, resumo = processar_mes(html_file, ferias, atestados, aniversarios, abonos)
         if df_mes is None:
             continue
 
