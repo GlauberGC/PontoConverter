@@ -26,7 +26,7 @@ def main():
     aniversarios = carregar_lista_txt(data_dir, ARQ_ANIVERSARIO)
     abonos = carregar_lista_txt(data_dir, ARQ_ABONO)
 
-
+    # Lista arquivos HTML/HTM na pasta
     html_files = sorted(pasta_html.glob("*.html")) + sorted(pasta_html.glob("*.htm"))
     html_files = sorted(dict.fromkeys(html_files), key=lambda p: p.name)
 
