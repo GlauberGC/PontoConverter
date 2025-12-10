@@ -25,7 +25,8 @@ def _aplicar_condicional_diferenca(ws, df, estilos, coluna_nome="Saldo do dia"):
 
 def gerar_arquivo_excel(caminho_saida: Path,
                         resultados: list[dict],
-                        df_consolidado: pd.DataFrame):
+                        df_consolidado: pd.DataFrame,
+                        df_resumo_txt: pd.DataFrame | None = None):
 
     print(f"Gerando Excel: {caminho_saida}")
 
@@ -47,6 +48,37 @@ def gerar_arquivo_excel(caminho_saida: Path,
             if row["Mês"] == "TOTAL GERAL":
                 for col in range(len(df_consolidado.columns)):  # A:H
                     ws_cons.write(idx + 1, col, df_consolidado.iloc[idx, col], estilos["total"])
+
+        # ================== RESUMO DOS ARQUIVOS TXT ==================
+        if df_resumo_txt is not None and not df_resumo_txt.empty:
+            start_row = len(df_consolidado) + 3  # uma linha em branco
+            # cabeçalho
+            ws_cons.write(start_row, 0, "Resumo", estilos["total"])
+            # tabela: colunas Tipo | Dias | Data1 | Data2 | Data3 | ...
+            
+            # escreve cabeçalho
+            headers = ["Tipo", "Dias"] + [f"Data {i+1}" for i in range(len(df_resumo_txt.columns) - 2)]
+            for c, h in enumerate(headers):
+                ws_cons.write(start_row + 1, c, h, estilos["total"])
+
+            # escreve dados
+            for i, r in df_resumo_txt.iterrows():
+                ws_cons.write(start_row + 2 + i, 0, str(r.get("Tipo", "")))
+                ws_cons.write(start_row + 2 + i, 1, int(r.get("Dias", 0)))
+                # escreve datas (colunas a partir de Data1, Data2, etc)
+                col_idx = 2
+                for col_name in df_resumo_txt.columns:
+                    if col_name.startswith("Data"):
+                        value = r.get(col_name, "")
+                        # converte NaN para string vazia
+                        if pd.isna(value):
+                            value = ""
+                        ws_cons.write(start_row + 2 + i, col_idx, str(value))
+                        col_idx += 1
+
+            # ajusta colunas para o bloco de resumo
+            for col in range(len(df_resumo_txt.columns) + 1):
+                ws_cons.set_column(col, col, 20)
 
         # ================== ABAS MENSAIS ==================
         for r in resultados:
@@ -82,8 +114,12 @@ def gerar_arquivo_excel(caminho_saida: Path,
                     fmt = estilos["feriado"]
                 elif tipo == "Abono":
                     fmt = estilos["abono"]
+                elif tipo == "Ajuste manual":
+                    fmt = estilos["ajuste_manual"]
                 elif tipo == "Final de Semana":
                     fmt = estilos["fds"]
+                elif tipo == "Quarta-feira de Cinzas":
+                    fmt = estilos["quartacinza"]                    
                 else:
                     continue  # dia normal, não colore
 

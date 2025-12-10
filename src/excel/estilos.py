@@ -11,13 +11,14 @@ def criar_estilos(workbook):
         "bottom": 2,
     })
 
-    estilos["ferias"] = workbook.add_format({"bg_color": "#DDEBF7"})
-    estilos["atestado"] = workbook.add_format({"bg_color": "#FFE699"})
-    estilos["aniversario"] = workbook.add_format({"bg_color": "#F8BE8E"})
-    estilos["feriado"] = workbook.add_format({"bg_color": "#F6E2F7"})
-    estilos["fds"] = workbook.add_format({"bg_color": "#FFF2CC"}) 
-    estilos["abono"] = workbook.add_format({"bg_color": "#C9DAF8"})  # azul claro
-
+    estilos["ferias"] = workbook.add_format({"bg_color": "#FFECB3"})       # Amarelo Pastel (Lazer/Sol)
+    estilos["atestado"] = workbook.add_format({"bg_color": "#B3E5FC"})     # Azul Claro Pastel (Saúde/Calma)
+    estilos["aniversario"] = workbook.add_format({"bg_color": "#FFCCBC"})  # Laranja/Pêssego Pastel (Celebração)
+    estilos["feriado"] = workbook.add_format({"bg_color": "#D1C4E9"})      # Lilás/Roxo Pastel (Especial/Diferenciado)
+    estilos["fds"] = workbook.add_format({"bg_color": "#CFD8DC"})          # Cinza Claro Azulado (Neutro/Descanso)
+    estilos["abono"] = workbook.add_format({"bg_color": "#C8E6C9"})        # Verde Claro Pastel (Benefício/Positivo)
+    estilos["quartacinza"] = workbook.add_format({"bg_color": "#BEBEBE"})    # Cinza Super Claro (Fundo Padrão/Neutro)
+    estilos["ajuste_manual"] = workbook.add_format({"bg_color": "#F8D7DA"})  # Vermelho claro (ajuste manual)
 
 
     estilos["verde"] = workbook.add_format({"font_color": "green"})

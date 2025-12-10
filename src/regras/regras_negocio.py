@@ -23,7 +23,6 @@ dias_semana = {
     6: "Domingo",
 }
 
-
 def gerar_nome_aba(mes: int, ano: int) -> str:
     mapa = {
         1: "Janeiro", 2: "Fevereiro", 3: "Março",
@@ -61,10 +60,24 @@ def processar_mes(html_file: Path,
                   ferias: set[date],
                   atestados: set[date],
                   aniversarios: set[date],
-                  abonos: set[date]):
+                  abonos: set[date],
+                  pontos_manuais: dict[date, dict] | None = None):
 
     horas_por_dia = extrair_horas_por_dia(html_file)
     mes, ano = obter_mes_ano(html_file, horas_por_dia)
+
+    # Se existirem pontos manuais para datas deste mês, sobrescreve o ponto extraído do HTML
+    if pontos_manuais:
+        for d, info in pontos_manuais.items():
+            # só sobrescreve se for do mesmo mês/ano que estamos processando (ou se a data estiver presente)
+            if d.month == mes and d.year == ano:
+                horas_por_dia[d] = info
+    # conjunto de datas que foram ajustadas manualmente (para priorizar e pintar)
+    manual_dates = set()
+    if pontos_manuais:
+        for d in pontos_manuais.keys():
+            if d.month == mes and d.year == ano:
+                manual_dates.add(d)
 
     feriados_do_ano = feriados_ano(ano)
     feriados_mes = {d for d in feriados_do_ano if d.month == mes}
@@ -142,6 +155,33 @@ def processar_mes(html_file: Path,
         eh_abono = d in abonos
         eh_aniversario = d in aniversarios
         eh_cinzas = (quarta_cinzas == d)
+        eh_ajuste = d in manual_dates
+
+        # 0) Ajuste manual — sobrescreve tipo do dia e cor
+        if eh_ajuste:
+            carga = CARGA_DIARIA_PADRAO
+            saldo = total_horas - carga
+
+            total_trab += total_horas
+            total_prev += carga
+            total_saldo += saldo
+
+            linha = {
+                "Data": d.strftime("%d/%m/%Y"),
+                "Dia da Semana": dias_semana[d.weekday()],
+                "Tipo do Dia": "Ajuste manual",
+                "Total Trabalhado": format_timedelta(total_horas),
+                "Carga Prevista": format_timedelta(carga),
+                "Saldo do dia": format_timedelta(saldo),
+            }
+
+            entradas, saidas = _entradas_saidas(horas_por_dia.get(d))
+            for i in range(max(len(entradas), len(saidas))):
+                linha[f"Entrada {i+1}"] = entradas[i] if i < len(entradas) else ""
+                linha[f"Saída {i+1}"] = saidas[i] if i < len(saidas) else ""
+
+            linhas.append(linha)
+            continue
 
         # 1) Férias
         if eh_ferias:
